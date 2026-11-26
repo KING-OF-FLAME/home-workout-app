@@ -39,7 +39,7 @@ sleep 10; shot 09-player-exercise
 adb shell input keyevent 4; sleep 1; tap "Quit"; sleep 2
 adb shell input keyevent 4; sleep 1; adb shell input keyevent 4; sleep 1
 tap "Exercises"; shot 10-exercise-library
-tap "Push-ups"; shot 11-exercise-detail
+tap "Jumping Jacks"; shot 11-exercise-detail
 adb shell input keyevent 4; sleep 1; adb shell input keyevent 4; sleep 1
 tap "Progress"; shot 12-progress
 tap "Coach"; shot 13-coach
