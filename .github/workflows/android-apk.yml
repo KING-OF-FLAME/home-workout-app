@@ -90,6 +90,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - uses: actions/checkout@v4
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -116,12 +118,29 @@ jobs:
             echo "----- crash lines -----"; grep -E "FATAL EXCEPTION|AndroidRuntime|ReactNativeJS|Exception|Error:" logcat.txt | grep -v "chatty" | head -80 || true
             adb shell pidof ${{ needs.build.outputs.package }} > /dev/null || (echo "App is not running: it crashed on launch" && exit 1)
             echo "App is running after 30 seconds"
+            bash scripts/ci/tour.sh ${{ needs.build.outputs.package }}
+            adb shell pidof ${{ needs.build.outputs.package }} > /dev/null || (adb logcat -d | grep -E "FATAL EXCEPTION|AndroidRuntime|ReactNativeJS" | tail -60; echo "App crashed during the tour" && exit 1)
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: emulator-logcat
           path: logcat.txt
+          if-no-files-found: ignore
+
+      - name: Pack screenshots
+        if: always()
+        run: |
+          if [ -d tour ]; then cd tour && zip -q screenshots.zip *.png && ls -la; fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: app-tour
+          path: |
+            tour/screenshots.zip
+            tour/tour.mp4
+            tour/*.png
           if-no-files-found: ignore
 
   release:
@@ -133,6 +152,12 @@ jobs:
         with:
           name: android-apk
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-tour
+          path: tour
+        continue-on-error: true
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -140,7 +165,10 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: ${{ needs.build.outputs.name }} v${{ needs.build.outputs.version }} (test build)
           prerelease: true
-          files: ${{ needs.build.outputs.file }}
+          files: |
+            ${{ needs.build.outputs.file }}
+            tour/screenshots.zip
+            tour/tour.mp4
           body: |
             Test build of ${{ needs.build.outputs.name }} for Android.
 
