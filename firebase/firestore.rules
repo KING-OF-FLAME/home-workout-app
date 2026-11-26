@@ -65,17 +65,23 @@ service cloud.firestore {
 
     // ---- Plans (private to the trainer who made them) ----
     match /workoutPlans/{planId} {
-      allow read, update, delete: if signedIn() && resource.data.trainerId == me();
+      // resource == null lets the app tell "deleted" apart from "no permission".
+      allow get: if signedIn() && (resource == null || resource.data.trainerId == me());
+      allow list, delete: if signedIn() && resource.data.trainerId == me();
+      allow update: if signedIn() && resource.data.trainerId == me() && request.resource.data.trainerId == me();
       allow create: if isTrainer() && request.resource.data.trainerId == me();
     }
     match /mealPlans/{planId} {
-      allow read, update, delete: if signedIn() && resource.data.trainerId == me();
+      allow get: if signedIn() && (resource == null || resource.data.trainerId == me());
+      allow list, delete: if signedIn() && resource.data.trainerId == me();
+      allow update: if signedIn() && resource.data.trainerId == me() && request.resource.data.trainerId == me();
       allow create: if isTrainer() && request.resource.data.trainerId == me();
     }
 
     // ---- Assignments: a copy of a plan sent to one student ----
     match /assignments/{id} {
-      allow read: if signedIn() && (resource.data.trainerId == me() || resource.data.studentId == me());
+      allow get: if signedIn() && (resource == null || resource.data.trainerId == me() || resource.data.studentId == me());
+      allow list: if signedIn() && (resource.data.trainerId == me() || resource.data.studentId == me());
       allow create: if isTrainer()
         && request.resource.data.trainerId == me()
         && hasStudent(me(), request.resource.data.studentId);

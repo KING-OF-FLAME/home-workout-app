@@ -25,7 +25,8 @@ export default function Coach() {
   const auth = useAuth();
   if (!isFirebaseConfigured) return <NotConfigured />;
   if (auth.loading) return <Loading />;
-  if (!auth.user || !auth.profile) return <SignedOut />;
+  if (!auth.user) return <SignedOut />;
+  if (!auth.profile) return <ProfileError />;
   if (auth.profile.role === 'trainer') return <TrainerDashboard />;
   return <StudentView />;
 }
@@ -40,6 +41,37 @@ function NotConfigured() {
           title="Coach features are not set up"
           message="Add your Firebase keys in config/app-config.json to let trainers add students and assign workout and meal plans. See the README."
         />
+      </Card>
+    </Screen>
+  );
+}
+
+function ProfileError() {
+  const { refresh, signOut } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Screen>
+      <Txt variant="h1">Coach</Txt>
+      <Card style={{ marginTop: spacing.lg }}>
+        <EmptyState icon="cloud-offline" title="Could not load your account" message="Check your internet connection and try again." />
+        <ErrorText message={error} />
+        <Button
+          title="Try again"
+          loading={busy}
+          onPress={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              await refresh();
+            } catch (e) {
+              setError(friendlyAuthError(e));
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
+        <Button title="Sign out" variant="ghost" onPress={() => signOut()} style={{ marginTop: spacing.sm }} />
       </Card>
     </Screen>
   );

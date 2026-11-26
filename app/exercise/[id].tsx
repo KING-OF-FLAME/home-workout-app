@@ -13,7 +13,7 @@ const LEVEL = ['', 'Beginner', 'Intermediate', 'Advanced'];
 
 export default function ExerciseDetail() {
   const c = useColors();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, fromPlayer } = useLocalSearchParams<{ id: string; fromPlayer?: string }>();
   const ex = getExercise(id);
   if (!ex) return <EmptyState icon="alert-circle" title="Exercise not found" />;
   return (
@@ -55,7 +55,7 @@ export default function ExerciseDetail() {
         </Card>
       ) : null}
       <Button title="Read instructions aloud" icon="volume-high" variant="secondary" style={{ marginTop: spacing.lg }} onPress={() => { Speech.stop(); Speech.speak(`${ex.name}. ${ex.steps.join(' ')} ${ex.tip ?? ''}`); }} />
-      <BannerAdSlot placement="exerciseDetail" />
+      <BannerAdSlot placement="exerciseDetail" hidden={fromPlayer === '1'} />
     </Screen>
   );
 }

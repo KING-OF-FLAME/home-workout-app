@@ -32,7 +32,7 @@ export default function Complete() {
   return (
     <Screen edges={['top', 'bottom']} footer={
       <View style={{ padding: spacing.lg, gap: spacing.sm }}>
-        <Button title="Done" onPress={() => router.replace('/')} />
+        <Button title="Done" onPress={() => router.dismissTo('/')} />
         <Button title="Share" icon="share-social" variant="secondary" onPress={share} />
       </View>
     }>

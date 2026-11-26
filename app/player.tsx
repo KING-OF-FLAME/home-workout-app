@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useKeepAwake } from 'expo-keep-awake';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, BackHandler, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -50,114 +50,131 @@ export default function Player() {
   const stepStartedAt = useRef(Date.now());
   const endAt = useRef(0);
   const lastSpokenSecond = useRef(-1);
+  /** Seconds actually spent on each exercise step (pauses excluded). */
   const exerciseSeconds = useRef<Record<number, number>>({});
+  /** Exercise steps finished properly: timer ran out or "Done" pressed (not skipped). */
+  const completedSteps = useRef<Set<number>>(new Set());
   const finished = useRef(false);
+  const started = useRef(false);
   /** Index of the step currently on screen; stale timer ticks compare against it. */
   const indexRef = useRef(0);
   const pausedRef = useRef(false);
+  const pausedAt = useRef(0);
+  const pausedTotal = useRef(0);
 
   const step = steps[index];
   const nextExercise = steps.slice(index + 1).find((s) => s.kind === 'exercise')?.exercise;
 
-  const recordStepTime = useCallback(() => {
-    const s = steps[index];
-    if (s?.kind === 'exercise' && !pausedRef.current) {
-      const spent = (Date.now() - stepStartedAt.current) / 1000;
-      exerciseSeconds.current[index] = (exerciseSeconds.current[index] ?? 0) + spent;
+  /** Active (unpaused) seconds since the workout started. */
+  const activeSeconds = () =>
+    (Date.now() - startedAt.current - pausedTotal.current - (pausedRef.current ? Date.now() - pausedAt.current : 0)) / 1000;
+
+  const recordStepTime = () => {
+    const i = indexRef.current;
+    if (!started.current || pausedRef.current || steps[i]?.kind !== 'exercise') return;
+    exerciseSeconds.current[i] = (exerciseSeconds.current[i] ?? 0) + (Date.now() - stepStartedAt.current) / 1000;
+    stepStartedAt.current = Date.now();
+  };
+
+  const finishRef = useRef<(partial?: boolean) => void>(() => undefined);
+  finishRef.current = (requestedPartial = false) => {
+    if (finished.current || !resolved) return;
+    recordStepTime();
+    finished.current = true;
+    coach.stop();
+    const exerciseStepCount = steps.filter((s) => s.kind === 'exercise').length;
+    const completedCount = completedSteps.current.size;
+    // Skipping through most of a workout does not count as finishing it.
+    const partial = requestedPartial || completedCount < Math.ceil(exerciseStepCount / 2);
+    const timed = Object.keys(exerciseSeconds.current).map(Number);
+    let kcal = 0;
+    for (const i of timed) {
+      const ex = steps[i]?.exercise;
+      if (ex) kcal += caloriesFor(ex.met, exerciseSeconds.current[i], profile.weightKg);
     }
-  }, [steps, index]);
+    const durationSec = Math.round(activeSeconds());
+    const restSec = Math.max(0, durationSec - timed.reduce((sum, i) => sum + exerciseSeconds.current[i], 0));
+    kcal += caloriesFor(1.5, restSec, profile.weightKg);
+    const session: Session = {
+      id: uid('s_'),
+      title: partial ? `${resolved.title} (partial)` : resolved.title,
+      kind: params.kind,
+      refId: params.id,
+      day,
+      startedAt: startedAt.current,
+      durationSec,
+      calories: Math.round(kcal),
+      exercisesDone: new Set([...completedSteps.current].map((i) => steps[i]?.itemIndex)).size,
+    };
+    addSession(session);
+    if (!partial && params.kind === 'program' && day !== undefined) completeProgramDay(params.id, day);
+    // Share progress with the coach, if this user has one.
+    if (trainerFeaturesAvailable && auth.profile) {
+      logCompletion({
+        studentId: auth.profile.uid,
+        trainerId: auth.profile.trainerId ?? null,
+        assignmentId: resolved.assignmentId ?? null,
+        day: params.kind === 'assignment' ? day ?? 0 : null,
+        title: session.title,
+        durationSec: session.durationSec,
+        calories: session.calories,
+        feeling: null,
+        completedAt: Date.now(),
+      }).catch(() => undefined);
+    }
+    coach.success();
+    router.replace({ pathname: '/complete', params: { session: session.id, partial: partial ? '1' : '' } });
+  };
 
-  const finish = useCallback(
-    (partial = false) => {
-      if (finished.current) return;
-      finished.current = true;
-      recordStepTime();
-      coach.stop();
-      if (!resolved) return;
-      const doneIdx = Object.keys(exerciseSeconds.current).map(Number);
-      let kcal = 0;
-      for (const i of doneIdx) {
-        const ex = steps[i]?.exercise;
-        if (ex) kcal += caloriesFor(ex.met, exerciseSeconds.current[i], profile.weightKg);
-      }
-      const durationSec = Math.round((Date.now() - startedAt.current) / 1000);
-      const restSec = Math.max(0, durationSec - doneIdx.reduce((s, i) => s + exerciseSeconds.current[i], 0));
-      kcal += caloriesFor(1.5, restSec, profile.weightKg);
-      const session: Session = {
-        id: uid('s_'),
-        title: partial ? `${resolved.title} (partial)` : resolved.title,
-        kind: params.kind,
-        refId: params.id,
-        day,
-        startedAt: startedAt.current,
-        durationSec,
-        calories: Math.round(kcal),
-        exercisesDone: new Set(doneIdx.map((i) => steps[i]?.itemIndex)).size,
-      };
-      addSession(session);
-      if (!partial && params.kind === 'program' && day !== undefined) completeProgramDay(params.id, day);
-      // Share progress with the coach, if this user has one.
-      if (trainerFeaturesAvailable && auth.profile) {
-        logCompletion({
-          studentId: auth.profile.uid,
-          trainerId: auth.profile.trainerId ?? null,
-          assignmentId: resolved.assignmentId ?? null,
-          day: params.kind === 'assignment' ? day ?? 0 : null,
-          title: session.title,
-          durationSec: session.durationSec,
-          calories: session.calories,
-          feeling: null,
-          completedAt: Date.now(),
-        }).catch(() => undefined);
-      }
-      coach.success();
-      router.replace({ pathname: '/complete', params: { session: session.id, partial: partial ? '1' : '' } });
-    },
-    [resolved, steps, profile.weightKg, params.kind, params.id, day, addSession, completeProgramDay, auth.profile, coach, router, recordStepTime],
-  );
-
+  /** Move to step i. `completed` is true when the current step ended naturally (timer or Done). */
   const goTo = useCallback(
-    (i: number) => {
-      if (i >= steps.length) return finish(); // finish() records the last step's time
+    (i: number, completed = false) => {
+      if (completed && steps[indexRef.current]?.kind === 'exercise') completedSteps.current.add(indexRef.current);
+      if (i >= steps.length) return finishRef.current(false);
       recordStepTime();
-      const s = steps[Math.max(0, i)];
-      indexRef.current = Math.max(0, i);
-      pausedRef.current = false;
-      setPaused(false);
-      setIndex(Math.max(0, i));
+      const target = Math.max(0, i);
+      const s = steps[target];
+      if (pausedRef.current) {
+        pausedTotal.current += Date.now() - pausedAt.current;
+        pausedRef.current = false;
+        setPaused(false);
+      }
+      started.current = true;
+      indexRef.current = target;
+      setIndex(target);
       stepStartedAt.current = Date.now();
       lastSpokenSecond.current = -1;
       const secs = s.kind === 'exercise' && s.exercise?.mode === 'reps' ? 0 : s.seconds ?? 0;
       setRemaining(secs);
       endAt.current = Date.now() + secs * 1000;
       coach.bump();
-      if (s.kind === 'ready') coach.say(`Get ready. First up, ${steps[1]?.exercise?.name ?? ''}`);
+      if (s.kind === 'ready') coach.say(`Get ready. First up, ${steps[target + 1]?.exercise?.name ?? ''}`);
       else if (s.kind === 'rest') {
-        const nx = steps.slice(i + 1).find((x) => x.kind === 'exercise')?.exercise;
+        const nx = steps.slice(target + 1).find((x) => x.kind === 'exercise')?.exercise;
         coach.say(`Rest. Next, ${nx?.name ?? ''}`);
       } else if (s.exercise) {
         const amount = s.exercise.mode === 'time' ? `${s.seconds} seconds` : `${s.reps} reps`;
         coach.say(`${s.exercise.name}. ${amount}${s.exercise.perSide ? ', split across both sides' : ''}`);
       }
     },
-    [steps, coach, finish, recordStepTime],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [steps, coach],
   );
 
   // Start once steps are ready.
   useEffect(() => {
-    if (steps.length && !finished.current) {
+    if (steps.length && !finished.current && !started.current) {
       startedAt.current = Date.now();
       goTo(0);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [steps.length]);
+  }, [steps.length, goTo]);
 
   // Tick.
   useEffect(() => {
     if (!step || paused) return;
     const timer = setInterval(() => {
-      if (indexRef.current !== index) return; // a newer step already started
-      setElapsed(Math.round((Date.now() - startedAt.current) / 1000));
+      if (indexRef.current !== index || pausedRef.current || finished.current) return; // stale tick
+      setElapsed(Math.round(activeSeconds()));
       const timed = !(step.kind === 'exercise' && step.exercise?.mode === 'reps');
       if (!timed) return;
       const left = Math.max(0, Math.ceil((endAt.current - Date.now()) / 1000));
@@ -167,42 +184,62 @@ export default function Player() {
         coach.say(String(left));
         coach.tick();
       }
-      if (left === 0) goTo(index + 1);
+      if (left === 0) goTo(index + 1, true);
     }, 250);
     return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, paused, index, goTo, coach]);
 
-  const togglePause = () => {
-    if (paused) {
-      endAt.current = Date.now() + remaining * 1000;
-      stepStartedAt.current = Date.now();
-      pausedRef.current = false;
-      setPaused(false);
-      coach.say('Go');
-    } else {
-      recordStepTime();
-      pausedRef.current = true;
-      setPaused(true);
-      coach.stop();
-    }
-  };
+  const pause = useCallback(() => {
+    if (pausedRef.current || finished.current) return false;
+    recordStepTime();
+    pausedRef.current = true;
+    pausedAt.current = Date.now();
+    setPaused(true);
+    coach.stop();
+    return true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coach]);
+
+  const resume = useCallback(() => {
+    if (!pausedRef.current) return;
+    pausedTotal.current += Date.now() - pausedAt.current;
+    endAt.current = Date.now() + remaining * 1000;
+    stepStartedAt.current = Date.now();
+    pausedRef.current = false;
+    setPaused(false);
+    coach.say('Go');
+  }, [remaining, coach]);
+
+  const togglePause = () => (paused ? resume() : pause());
 
   const confirmExit = useCallback(() => {
-    const doneSomething = Object.keys(exerciseSeconds.current).length > 0 || (steps[index]?.kind === 'exercise' && index > 1);
+    // Stop the clock while the dialog is open.
+    const pausedByDialog = pause();
+    const doneSomething = Object.keys(exerciseSeconds.current).length > 0;
     Alert.alert('End workout?', doneSomething ? 'Save what you have done so far?' : 'Your progress will not be saved.', [
-      { text: 'Keep going', style: 'cancel' },
-      ...(doneSomething ? [{ text: 'Save & end', onPress: () => finish(true) }] : []),
-      { text: 'Quit', style: 'destructive' as const, onPress: () => { coach.stop(); router.back(); } },
-    ]);
-  }, [steps, index, finish, coach, router]);
+      { text: 'Keep going', style: 'cancel', onPress: () => { if (pausedByDialog) resume(); } },
+      ...(doneSomething ? [{ text: 'Save & end', onPress: () => finishRef.current(true) }] : []),
+      { text: 'Quit', style: 'destructive' as const, onPress: () => { finished.current = true; coach.stop(); router.back(); } },
+    ], { cancelable: false });
+  }, [pause, resume, coach, router]);
 
-  useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      confirmExit();
-      return true;
-    });
-    return () => sub.remove();
-  }, [confirmExit]);
+  /** Show exercise instructions; the workout pauses so nothing runs behind that screen. */
+  const showHowTo = (exerciseId: string) => {
+    pause();
+    router.push({ pathname: '/exercise/[id]', params: { id: exerciseId, fromPlayer: '1' } });
+  };
+
+  // Hardware back only while this screen is focused (not when "How to do it" is on top).
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        confirmExit();
+        return true;
+      });
+      return () => sub.remove();
+    }, [confirmExit]),
+  );
 
   useEffect(() => () => coach.stop(), [coach]);
 
@@ -264,7 +301,7 @@ export default function Player() {
         )}
 
         {!isRest && step.exercise ? (
-          <Pressable onPress={() => router.push({ pathname: '/exercise/[id]', params: { id: step.exercise!.id } })} style={{ marginTop: spacing.lg }}>
+          <Pressable onPress={() => showHowTo(step.exercise!.id)} style={{ marginTop: spacing.lg }}>
             <Txt variant="small" color={c.textDim} style={{ textDecorationLine: 'underline' }}>How to do it</Txt>
           </Pressable>
         ) : null}
@@ -272,7 +309,7 @@ export default function Player() {
 
       <View style={{ padding: spacing.lg, gap: spacing.md }}>
         {isReps ? (
-          <Button title="Done" icon="checkmark" onPress={() => goTo(index + 1)} />
+          <Button title="Done" icon="checkmark" onPress={() => goTo(index + 1, true)} />
         ) : isRest ? (
           <Row>
             <Button title="+20s" variant="secondary" style={{ flex: 1 }} onPress={() => { endAt.current += 20000; setRemaining((r) => r + 20); }} />

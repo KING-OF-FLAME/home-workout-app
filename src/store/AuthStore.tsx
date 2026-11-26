@@ -55,6 +55,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // While signUp() is creating the profile, the auth listener must not create a default one.
   const signingUp = useRef(false);
 
+  /** Load the profile document, creating a member profile if none exists. */
+  const loadProfile = useCallback(async (u: User): Promise<UserDoc> => {
+    const existing = await getUserDoc(u.uid);
+    if (existing) return existing;
+    return createUserDoc({ uid: u.uid, displayName: u.displayName ?? 'Athlete', email: u.email ?? '', role: 'member' });
+  }, []);
+
   useEffect(() => {
     const fb = firebase();
     if (!fb) return;
@@ -63,25 +70,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (u) {
         if (signingUp.current) return;
         try {
-          let doc = await getUserDoc(u.uid);
-          if (!doc) {
-            doc = await createUserDoc({ uid: u.uid, displayName: u.displayName ?? 'Athlete', email: u.email ?? '', role: 'member' });
-          }
-          setProfile(doc);
+          setProfile(await loadProfile(u));
         } catch {
-          setProfile(null);
+          setProfile(null); // e.g. offline; screens offer a retry via refresh()
         }
       } else {
         setProfile(null);
       }
       setLoading(false);
     });
-  }, []);
+  }, [loadProfile]);
 
+  /** Reload the profile (also retries after a failed load). Throws on network errors. */
   const refresh = useCallback(async () => {
-    if (!user) return;
-    setProfile(await getUserDoc(user.uid));
-  }, [user]);
+    const current = firebase()?.auth.currentUser;
+    if (!current) return;
+    setProfile(await loadProfile(current));
+  }, [loadProfile]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const fb = firebase();
@@ -95,10 +100,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signingUp.current = true;
     try {
       const cred = await createUserWithEmailAndPassword(fb.auth, email.trim(), password);
-      await updateProfile(cred.user, { displayName: name.trim() });
-      const doc = await createUserDoc({ uid: cred.user.uid, displayName: name.trim(), email: email.trim(), role });
-      setUser(cred.user);
-      setProfile(doc);
+      try {
+        await updateProfile(cred.user, { displayName: name.trim() });
+        const doc = await createUserDoc({ uid: cred.user.uid, displayName: name.trim(), email: email.trim(), role });
+        setUser(cred.user);
+        setProfile(doc);
+      } catch (e) {
+        // Do not leave a half-created account behind: remove it so the user can simply try again.
+        await deleteUser(cred.user).catch(() => fbSignOut(fb.auth));
+        throw e;
+      }
     } finally {
       signingUp.current = false;
       setLoading(false);
@@ -119,10 +130,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const deleteAccount = useCallback(
     async (password: string) => {
       const fb = firebase();
-      if (!fb || !fb.auth.currentUser || !profile) return;
-      const current = fb.auth.currentUser;
+      const current = fb?.auth.currentUser;
+      if (!fb || !current) throw new Error('You are not signed in.');
       await reauthenticateWithCredential(current, EmailAuthProvider.credential(current.email ?? '', password));
-      await deleteAccountData(profile);
+      // Use the stored profile, or read it now (it may have failed to load earlier).
+      const doc =
+        profile ??
+        (await getUserDoc(current.uid)) ?? { uid: current.uid, displayName: '', email: current.email ?? '', role: 'member' as const, trainerId: null, trainerName: null, createdAt: 0 };
+      await deleteAccountData(doc);
       await deleteUser(current);
     },
     [profile],

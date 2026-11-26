@@ -86,9 +86,13 @@ export default function SettingsScreen() {
       <Card>
         {!auth.enabled ? (
           <Txt dim>You are using the app offline. Everything is saved on this phone.</Txt>
-        ) : auth.user && auth.profile ? (
+        ) : auth.user ? (
           <>
-            <ListRow icon="person" title={auth.profile.displayName} subtitle={`${auth.profile.email} · ${auth.profile.role === 'trainer' ? 'Trainer' : 'Member'}`} />
+            <ListRow
+              icon="person"
+              title={auth.profile?.displayName ?? auth.user.email ?? 'Signed in'}
+              subtitle={auth.profile ? `${auth.profile.email} · ${auth.profile.role === 'trainer' ? 'Trainer' : 'Member'}` : 'Account details could not load. Check your connection.'}
+            />
             <Divider />
             <ListRow icon="log-out-outline" title="Sign out" onPress={() => auth.signOut()} />
           </>
