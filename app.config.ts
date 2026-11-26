@@ -74,6 +74,13 @@ const config: ExpoConfig = {
           // Expo SDK 58 libraries need compileSdk 37. Google Play requires targetSdk 36 for new apps.
           compileSdkVersion: 37,
           targetSdkVersion: 36,
+          // R8 removed WorkManager's Room database class and crashed the app on launch.
+          // Minify stays off for now; the keep rules below make it safe to turn back on.
+          enableMinifyInReleaseBuilds: false,
+          extraProguardRules: [
+            '-keep class * extends androidx.room.RoomDatabase { <init>(); }',
+            '-keep class androidx.work.impl.** { *; }',
+          ].join('\n'),
         },
       },
     ],

@@ -28,6 +28,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      name: ${{ steps.version.outputs.name }}
+      package: ${{ steps.version.outputs.package }}
+      file: ${{ steps.apk.outputs.file }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,6 +57,7 @@ jobs:
         run: |
           echo "version=$(node -p "require('./config/app-config.json').app.version")" >> "$GITHUB_OUTPUT"
           echo "name=$(node -p "require('./config/app-config.json').app.name")" >> "$GITHUB_OUTPUT"
+          echo "package=$(node -p "require('./config/app-config.json').app.androidPackage")" >> "$GITHUB_OUTPUT"
 
       - name: Generate the Android project
         run: npx expo prebuild --platform android --no-install
@@ -62,7 +68,7 @@ jobs:
 
       - name: Build release APK (debug-signed)
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
 
       - name: Rename APK
         id: apk
@@ -77,17 +83,95 @@ jobs:
           path: ${{ steps.apk.outputs.file }}
           retention-days: 30
 
+
+  # Installs the APK on an Android emulator, opens it and fails if the app crashes.
+  smoke-test:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+
+      - name: Launch app on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            adb install -r "${{ needs.build.outputs.file }}"
+            adb logcat -c
+            adb shell monkey -p ${{ needs.build.outputs.package }} -c android.intent.category.LAUNCHER 1
+            sleep 30
+            adb logcat -d > logcat.txt || true
+            echo "----- crash lines -----"; grep -E "FATAL EXCEPTION|AndroidRuntime|ReactNativeJS|Exception|Error:" logcat.txt | grep -v "chatty" | head -80 || true
+            adb shell pidof ${{ needs.build.outputs.package }} > /dev/null || (echo "App is not running: it crashed on launch" && exit 1)
+            echo "App is running after 30 seconds"
+            bash scripts/ci/tour.sh ${{ needs.build.outputs.package }}
+            adb shell pidof ${{ needs.build.outputs.package }} > /dev/null || (adb logcat -d | grep -E "FATAL EXCEPTION|AndroidRuntime|ReactNativeJS" | tail -60; echo "App crashed during the tour" && exit 1)
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: emulator-logcat
+          path: logcat.txt
+          if-no-files-found: ignore
+
+      - name: Pack screenshots
+        if: always()
+        run: |
+          if [ -d tour ]; then cd tour && zip -q screenshots.zip *.png && ls -la; fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: app-tour
+          path: |
+            tour/screenshots.zip
+            tour/tour.mp4
+            tour/*.png
+          if-no-files-found: ignore
+
+  release:
+    needs: [build, smoke-test]
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.release) || github.ref == 'refs/heads/claude/project-thread-qpkgpn'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-tour
+          path: tour
+        continue-on-error: true
+
       - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.release) || github.ref == 'refs/heads/claude/project-thread-qpkgpn'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}-test', steps.version.outputs.version) }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}-test', needs.build.outputs.version) }}
           target_commitish: ${{ github.sha }}
-          name: ${{ steps.version.outputs.name }} v${{ steps.version.outputs.version }} (test build)
+          name: ${{ needs.build.outputs.name }} v${{ needs.build.outputs.version }} (test build)
           prerelease: true
-          files: ${{ steps.apk.outputs.file }}
+          files: |
+            ${{ needs.build.outputs.file }}
+            tour/screenshots.zip
+            tour/tour.mp4
           body: |
-            Test build of ${{ steps.version.outputs.name }} for Android.
+            Test build of ${{ needs.build.outputs.name }} for Android.
 
             **Install:** download the APK below on your Android phone and open it. Allow "Install unknown apps" if asked.
 

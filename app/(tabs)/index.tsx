@@ -76,7 +76,7 @@ export default function Home() {
             {weekCount}/{profile.daysPerWeek} workouts
           </Txt>
         </Row>
-        <Row style={{ justifyContent: 'space-between', marginTop: spacing.md }}>
+        <Row gap={0} style={{ justifyContent: 'space-between', marginTop: spacing.md }}>
           {weekDays.map((d) => {
             const isDone = stats.activeDays.has(d.key);
             const isToday = d.key === dayKey();
@@ -87,9 +87,9 @@ export default function Home() {
                 </Txt>
                 <View
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
+                    width: 30,
+                    height: 30,
+                    borderRadius: 15,
                     backgroundColor: isDone ? c.accent : c.surfaceAlt,
                     borderWidth: isToday ? 2 : 0,
                     borderColor: c.primary,

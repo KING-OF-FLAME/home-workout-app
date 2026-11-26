@@ -288,12 +288,12 @@ export default function Player() {
 
         {isReps ? (
           <View style={{ alignItems: 'center', marginTop: spacing.xl }}>
-            <Txt style={{ fontSize: 72, fontWeight: '900' }}>×{step.reps}</Txt>
+            <Txt style={{ fontSize: 72, lineHeight: 86, fontWeight: '900' }}>×{step.reps}</Txt>
             <Txt muted>{step.exercise?.perSide ? 'reps total, split across both sides' : 'reps'}</Txt>
           </View>
         ) : (
           <View style={{ alignItems: 'center', marginTop: spacing.xl }}>
-            <Txt style={{ fontSize: 80, fontWeight: '900', fontVariant: ['tabular-nums'] }}>{formatClock(remaining)}</Txt>
+            <Txt style={{ fontSize: 80, lineHeight: 96, fontWeight: '900', fontVariant: ['tabular-nums'] }}>{formatClock(remaining)}</Txt>
             <View style={{ width: 220, marginTop: spacing.sm }}>
               <ProgressBar value={1 - remaining / Math.max(1, total)} color={isRest ? c.accent : c.primary} />
             </View>
