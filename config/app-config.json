@@ -1,0 +1,75 @@
+{
+  "$comment": "Edit this ONE file to rebrand the app. See README > Rebranding. Values here are read by app.config.ts (native build settings) and by the app at runtime.",
+
+  "app": {
+    "name": "FitHome",
+    "slug": "fithome",
+    "scheme": "fithome",
+    "version": "1.0.0",
+    "androidVersionCode": 1,
+    "iosBuildNumber": "1",
+    "androidPackage": "com.yourcompany.fithome",
+    "iosBundleId": "com.yourcompany.fithome",
+    "easProjectId": ""
+  },
+
+  "brand": {
+    "tagline": "Your gym, at home.",
+    "primaryColor": "#FF5A36",
+    "accentColor": "#3DDC97",
+    "splashBackground": "#0E0F13",
+    "defaultTheme": "dark",
+    "supportEmail": "support@example.com",
+    "privacyPolicyUrl": "https://example.com/privacy",
+    "termsUrl": "https://example.com/terms"
+  },
+
+  "features": {
+    "trainerMode": true,
+    "allowTrainerSignup": true,
+    "guestMode": true,
+    "voiceCoach": true,
+    "reminders": true
+  },
+
+  "ads": {
+    "enabled": true,
+    "useTestAdsInDebug": true,
+    "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+    "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+    "bannerUnitId": {
+      "android": "",
+      "ios": ""
+    },
+    "placements": {
+      "home": true,
+      "workouts": true,
+      "progress": true,
+      "exerciseLibrary": true,
+      "exerciseDetail": true,
+      "workoutPreview": true,
+      "workoutComplete": true,
+      "coach": true,
+      "settings": false
+    },
+    "requestNonPersonalizedAdsOnly": false,
+    "maxAdContentRating": "PG"
+  },
+
+  "firebase": {
+    "apiKey": "",
+    "authDomain": "",
+    "projectId": "",
+    "storageBucket": "",
+    "messagingSenderId": "",
+    "appId": ""
+  },
+
+  "defaults": {
+    "restSeconds": 30,
+    "getReadySeconds": 10,
+    "units": "metric",
+    "reminderHour": 7,
+    "reminderMinute": 30
+  }
+}

@@ -1,0 +1,102 @@
+rules_version = '2';
+
+// Security rules for the trainer <-> student features.
+// Deploy with:  firebase deploy --only firestore:rules   (see README)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function userDoc(uid) { return get(/databases/$(database)/documents/users/$(uid)).data; }
+    function isTrainer() { return signedIn() && userDoc(me()).role == 'trainer'; }
+    function hasStudent(trainerId, studentId) {
+      return exists(/databases/$(database)/documents/rosters/$(trainerId)/students/$(studentId));
+    }
+
+    // ---- Profiles ----
+    match /users/{userId} {
+      allow read: if signedIn() && (me() == userId || hasStudent(me(), userId));
+      allow create: if signedIn() && me() == userId
+        && request.resource.data.role in ['member', 'trainer']
+        && request.resource.data.trainerId == null;
+      // A user may edit their own profile. trainerId can only be set while joining
+      // through a valid invite (checked on the roster document in the same batch) or cleared.
+      allow update: if signedIn() && me() == userId
+        && request.resource.data.role in ['member', 'trainer']
+        && (
+          request.resource.data.trainerId == resource.data.trainerId
+          || request.resource.data.trainerId == null
+          || existsAfter(/databases/$(database)/documents/rosters/$(request.resource.data.trainerId)/students/$(userId))
+        );
+      allow delete: if signedIn() && me() == userId;
+    }
+
+    // ---- Invite codes ----
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow list: if signedIn() && resource.data.trainerId == me();
+      allow create: if isTrainer() && request.resource.data.trainerId == me() && request.resource.data.used == false;
+      allow delete: if signedIn() && resource.data.trainerId == me();
+      // The trainer can edit; a student can only mark an unused code as used by themselves.
+      allow update: if signedIn() && (
+        resource.data.trainerId == me()
+        || (
+          resource.data.used == false
+          && request.resource.data.used == true
+          && request.resource.data.usedBy == me()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt'])
+        )
+      );
+    }
+
+    // ---- Trainer rosters ----
+    match /rosters/{trainerId}/students/{studentId} {
+      allow read: if signedIn() && (me() == trainerId || me() == studentId);
+      allow update: if signedIn() && me() == trainerId;
+      allow delete: if signedIn() && (me() == trainerId || me() == studentId);
+      // A student adds themselves, only with an unused invite from this trainer
+      // that is being marked as used by them in the same batch.
+      allow create: if signedIn() && me() == studentId && me() != trainerId
+        && request.resource.data.inviteCode is string
+        && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.trainerId == trainerId
+        && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.used == false
+        && getAfter(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.usedBy == me();
+    }
+
+    // ---- Plans (private to the trainer who made them) ----
+    match /workoutPlans/{planId} {
+      // resource == null lets the app tell "deleted" apart from "no permission".
+      allow get: if signedIn() && (resource == null || resource.data.trainerId == me());
+      allow list, delete: if signedIn() && resource.data.trainerId == me();
+      allow update: if signedIn() && resource.data.trainerId == me() && request.resource.data.trainerId == me();
+      allow create: if isTrainer() && request.resource.data.trainerId == me();
+    }
+    match /mealPlans/{planId} {
+      allow get: if signedIn() && (resource == null || resource.data.trainerId == me());
+      allow list, delete: if signedIn() && resource.data.trainerId == me();
+      allow update: if signedIn() && resource.data.trainerId == me() && request.resource.data.trainerId == me();
+      allow create: if isTrainer() && request.resource.data.trainerId == me();
+    }
+
+    // ---- Assignments: a copy of a plan sent to one student ----
+    match /assignments/{id} {
+      allow get: if signedIn() && (resource == null || resource.data.trainerId == me() || resource.data.studentId == me());
+      allow list: if signedIn() && (resource.data.trainerId == me() || resource.data.studentId == me());
+      allow create: if isTrainer()
+        && request.resource.data.trainerId == me()
+        && hasStudent(me(), request.resource.data.studentId);
+      allow update: if signedIn() && resource.data.trainerId == me()
+        && request.resource.data.trainerId == me()
+        && request.resource.data.studentId == resource.data.studentId;
+      allow delete: if signedIn() && resource.data.trainerId == me();
+    }
+
+    // ---- Completed workouts (the student's log, visible to their trainer) ----
+    match /completions/{id} {
+      allow read: if signedIn() && (resource.data.studentId == me() || resource.data.trainerId == me());
+      allow create: if signedIn() && request.resource.data.studentId == me()
+        && (request.resource.data.trainerId == null || hasStudent(request.resource.data.trainerId, me()));
+      allow delete: if signedIn() && resource.data.studentId == me();
+    }
+  }
+}
