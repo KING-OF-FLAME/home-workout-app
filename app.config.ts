@@ -71,8 +71,8 @@ const config: ExpoConfig = {
       'expo-build-properties',
       {
         android: {
-          // Play Store: new apps must target the latest Android API level.
-          compileSdkVersion: 36,
+          // Expo SDK 58 libraries need compileSdk 37. Google Play requires targetSdk 36 for new apps.
+          compileSdkVersion: 37,
           targetSdkVersion: 36,
         },
       },

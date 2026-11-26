@@ -215,7 +215,7 @@ Checklist for a new app:
 - [ ] Unique `androidPackage` and your own icon/screenshots
 - [ ] Real AdMob IDs in the config; GDPR message created in AdMob
 - [ ] Privacy policy URL hosted and set in `brand.privacyPolicyUrl` (it must mention AdMob/advertising ID, Firebase Authentication and Firestore)
-- [ ] Upload the **AAB** (production profile); target API level 36 is already set
+- [ ] Upload the **AAB** (production profile); targetSdk 36 (compileSdk 37) is already set
 - [ ] **Data safety** form: device/advertising ID (AdMob), email and name (accounts), fitness info (workout history stored on device and, for coached users, in Firestore); data deletion available in the app
 - [ ] **Ads** declaration: "Yes, my app contains ads"
 - [ ] **Health apps** declaration: fitness/workout app, not a medical device
