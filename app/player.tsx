@@ -52,13 +52,16 @@ export default function Player() {
   const lastSpokenSecond = useRef(-1);
   const exerciseSeconds = useRef<Record<number, number>>({});
   const finished = useRef(false);
+  /** Index of the step currently on screen; stale timer ticks compare against it. */
+  const indexRef = useRef(0);
+  const pausedRef = useRef(false);
 
   const step = steps[index];
   const nextExercise = steps.slice(index + 1).find((s) => s.kind === 'exercise')?.exercise;
 
   const recordStepTime = useCallback(() => {
     const s = steps[index];
-    if (s?.kind === 'exercise') {
+    if (s?.kind === 'exercise' && !pausedRef.current) {
       const spent = (Date.now() - stepStartedAt.current) / 1000;
       exerciseSeconds.current[index] = (exerciseSeconds.current[index] ?? 0) + spent;
     }
@@ -115,9 +118,12 @@ export default function Player() {
 
   const goTo = useCallback(
     (i: number) => {
+      if (i >= steps.length) return finish(); // finish() records the last step's time
       recordStepTime();
-      if (i >= steps.length) return finish();
       const s = steps[Math.max(0, i)];
+      indexRef.current = Math.max(0, i);
+      pausedRef.current = false;
+      setPaused(false);
       setIndex(Math.max(0, i));
       stepStartedAt.current = Date.now();
       lastSpokenSecond.current = -1;
@@ -150,6 +156,7 @@ export default function Player() {
   useEffect(() => {
     if (!step || paused) return;
     const timer = setInterval(() => {
+      if (indexRef.current !== index) return; // a newer step already started
       setElapsed(Math.round((Date.now() - startedAt.current) / 1000));
       const timed = !(step.kind === 'exercise' && step.exercise?.mode === 'reps');
       if (!timed) return;
@@ -169,10 +176,12 @@ export default function Player() {
     if (paused) {
       endAt.current = Date.now() + remaining * 1000;
       stepStartedAt.current = Date.now();
+      pausedRef.current = false;
       setPaused(false);
       coach.say('Go');
     } else {
       recordStepTime();
+      pausedRef.current = true;
       setPaused(true);
       coach.stop();
     }
