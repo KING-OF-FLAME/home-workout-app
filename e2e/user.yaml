@@ -83,16 +83,16 @@ name: FitHome member tutorial
 - tapOn: "Start workout"
 - runScript: { file: caption.js, env: { CAPTION: "The player counts you in, shows the move and talks you through it." } }
 - extendedWaitUntil: { visible: "Go!|Set 1 of .*", timeout: 25000 }
+- tapOn: "Pause"
 - takeScreenshot: u12-player-3d
-- runScript: { file: caption.js, env: { CAPTION: "Switch the demo: 3D body, drawn body, simple figure or photos." } }
+- runScript: { file: caption.js, env: { CAPTION: "Pause any time. Switch the demo: 3D body, drawn body or simple figure." } }
+- assertVisible: "Paused. Take your time."
 - tapOn: "Drawn"
 - takeScreenshot: u13-player-drawn
 - tapOn: "Simple"
 - takeScreenshot: u14-player-simple
 - tapOn: "3D body"
-- runScript: { file: caption.js, env: { CAPTION: "Pause any time, or skip to the next exercise." } }
-- tapOn: "Pause"
-- assertVisible: "Paused. Take your time."
+- runScript: { file: caption.js, env: { CAPTION: "Resume, or skip to the next exercise." } }
 - tapOn: "Resume"
 - tapOn: "Next"
 - tapOn: "Next"
