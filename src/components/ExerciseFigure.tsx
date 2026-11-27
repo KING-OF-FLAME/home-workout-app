@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
-import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Line, Path, Polygon, Rect } from 'react-native-svg';
+import { bodyShapes } from '@/animation/body';
 import { MOVES } from '@/animation/moves';
-import { figureShapes, hotParts, type FigureColors, type Shape } from '@/animation/render';
+import type { FigureColors, Shape } from '@/animation/render';
 import { prepare, sample, timeline, VIEW_H, VIEW_W, type PreparedFrame, type Timeline } from '@/animation/skeleton';
 import { BODY_LABEL, MUSCLE_INFO } from '@/data/muscles';
 import { useColors } from '@/store/AppStore';
@@ -34,6 +35,17 @@ function ShapeEl({ s, pulse }: { s: Shape; pulse: number }) {
       return <Path d={s.d} stroke={s.color} strokeWidth={s.w} strokeLinecap="round" fill="none" opacity={opacity} />;
     case 'circle':
       return <Circle cx={s.c[0]} cy={s.c[1]} r={s.r} fill={s.color} opacity={opacity} />;
+    case 'poly':
+      return (
+        <Polygon
+          points={s.pts.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')}
+          fill={s.color}
+          opacity={opacity}
+          stroke={s.stroke}
+          strokeWidth={s.stroke ? s.strokeW ?? 0.5 : 0}
+          strokeLinejoin="round"
+        />
+      );
     case 'rect':
       return <Rect x={s.x} y={s.y} width={s.w} height={s.h} rx={s.rx ?? 0} fill={s.color} opacity={opacity} />;
   }
@@ -88,17 +100,22 @@ export function ExerciseFigure({
   }, [playing, speed, data]);
 
   const colors: FigureColors = useMemo(
-    () => ({ near: c.textDim, far: c.textMuted, hot: c.primary, prop: c.border, ground: c.border, face: background ?? c.surfaceAlt }),
-    [c, background],
+    () =>
+      c.mode === 'dark'
+        ? { near: '#C9CFD9', far: '#8A919E', line: '#2F333C', hair: '#2A2D35', hot: '#FF4B2B', warm: '#FFB199', prop: c.border, ground: c.border, face: '#22252D' }
+        : { near: '#DCE1E8', far: '#AAB1BD', line: '#555B67', hair: '#3A3E48', hot: '#F0401F', warm: '#FFB59E', prop: '#C9CED6', ground: '#C9CED6', face: '#2A2D35' },
+    [c],
   );
   const primary = MUSCLE_INFO[exerciseId]?.primary ?? [];
-  const hot = useMemo(() => hotParts(primary), [primary]);
+  const secondary = MUSCLE_INFO[exerciseId]?.secondary ?? [];
+  const hot = useMemo(() => new Set(primary), [primary]);
+  const warm = useMemo(() => new Set(secondary), [secondary]);
 
   if (!data) return null;
   // A still frame shows the most telling position: the end of the first move.
   const t = playing || time > 0 ? time : data.tl.segments[Math.min(1, data.tl.segments.length - 1)].start + data.tl.segments[Math.min(1, data.tl.segments.length - 1)].move;
   const r = sample(data.prepared, data.tl, t, data.move.view);
-  const shapes = figureShapes(r.points, data.move.view, data.move.props, r.spine, hot, colors);
+  const shapes = bodyShapes(r.points, data.move.view, data.move.props, r.spine, hot, warm, colors, data.move.faceUp);
   const pulse = 0.55 + 0.45 * Math.sin(t / 260);
   const height = (width * VIEW_H) / VIEW_W;
 

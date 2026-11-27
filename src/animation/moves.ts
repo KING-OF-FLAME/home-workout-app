@@ -11,6 +11,8 @@ export interface Prop {
 
 export interface Move {
   view: View;
+  /** Lying on the back: the front of the body faces up (side view). */
+  faceUp?: boolean;
   props?: Prop[];
   frames: Frame[];
 }
@@ -727,3 +729,10 @@ export const MOVES: Record<string, Move> = {
 };
 
 export { mirror };
+
+/** Exercises done lying on the back (or with the back on a chair): drawn facing up. */
+const FACE_UP = [
+  'crunches', 'bicycle-crunches', 'leg-raises', 'dead-bug', 'flutter-kicks', 'heel-taps', 'v-ups', 'hollow-hold',
+  'glute-bridge', 'single-leg-bridge', 'figure-four', 'spinal-twist', 'reverse-crunches', 'chair-hip-thrust',
+];
+for (const id of FACE_UP) if (MOVES[id]) MOVES[id].faceUp = true;
