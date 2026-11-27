@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0 (2026-11-27)
+
+- Realistic exercise demos: every one of the 87 exercises is performed by a realistic man or woman (rendered in 3D from free CC0 MakeHuman bodies). Choose the body in onboarding or in Profile → Exercise demos show. Pause and slow motion work as before.
+- Exercise pages have three demo views: Real body, Muscles (drawn figure with glowing muscles) and Photos
+- Exercise list thumbnails show the chosen body
+- Trainer ⇄ student without any network: plans as QR codes (big plans cycle through a few codes), the student's progress as a QR code, or a .fithome file sent on WhatsApp, email or any app
+- The camera only reads QR codes; nothing is recorded
+- Mountain climbers and plank up-downs now keep the hands on the floor
+- tools/render-humans: the scripts that render the demos, with licence notes
+
 ## 1.2.0 (2026-11-27)
 
 - Works fully offline: no account and no server needed. Every phone keeps its own data.

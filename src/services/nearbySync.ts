@@ -269,17 +269,30 @@ export async function syncWithTrainer(student: UserDoc, code: string): Promise<S
   }
 
   const { trainer, assignments } = reply;
+  await saveTrainerPlans(student, trainer, assignments, reply.at, code);
+  return { trainerName: trainer.name, plans: assignments.filter((a) => a.active).length, sent: completions.length };
+}
+
+/**
+ * Store a trainer's latest plans on the student's phone (used by Wi-Fi sync,
+ * QR codes and plan files). This trainer's old copies are replaced.
+ */
+export async function saveTrainerPlans(
+  student: UserDoc,
+  trainer: { uid: string; name: string },
+  assignments: Assignment[],
+  at: number,
+  code: string,
+) {
   const existing = await localStore.query<Assignment>('assignments', [['studentId', student.uid]]);
   await localStore.batch([
-    // Replace this trainer's plans with the latest copies.
     ...existing.filter((a) => a.trainerId === trainer.uid).map((a) => ({ op: 'delete' as const, path: `assignments/${a.id}` })),
     ...assignments.map((a) => ({ op: 'set' as const, path: `assignments/${a.id}`, data: { ...a, studentId: student.uid } })),
-    { op: 'set', path: LINK_PATH, data: { code, trainerId: trainer.uid, trainerName: trainer.name, lastSyncAt: reply.at } satisfies CoachLink },
+    { op: 'set', path: LINK_PATH, data: { code, trainerId: trainer.uid, trainerName: trainer.name, lastSyncAt: at } satisfies CoachLink },
   ]);
   if (student.trainerId !== trainer.uid || student.trainerName !== trainer.name) {
     await updateUserDoc(student.uid, { trainerId: trainer.uid, trainerName: trainer.name });
   }
-  return { trainerName: trainer.name, plans: assignments.filter((a) => a.active).length, sent: completions.length };
 }
 
 /** Student removes the trainer from this phone (plans are kept off the list). */

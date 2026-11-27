@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image, View } from 'react-native';
 import { EXERCISE_FRAMES } from '@/data/exerciseMedia';
 import { ExerciseFigure, hasFigure } from './ExerciseFigure';
+import { humanThumb, useBodySex } from './HumanAnimation';
 import type { Exercise, MuscleGroup } from '@/data/types';
 import { muscleColors, radius } from '@/theme';
 import type { IconName } from './ui';
@@ -22,6 +23,11 @@ const groupIcon: Record<MuscleGroup, IconName> = {
 /** Exercise photo (bundled demo or media URL), or a coloured placeholder by muscle group when no media URL is set. */
 export function ExerciseThumb({ exercise, size = 52 }: { exercise: Exercise; size?: number }) {
   const color = muscleColors[exercise.group] ?? '#888';
+  const sex = useBodySex();
+  const human = humanThumb(exercise.id, sex);
+  if (human) {
+    return <Image source={human} style={{ width: size, height: size, borderRadius: radius.md, backgroundColor: '#0C0D10' }} resizeMode="cover" />;
+  }
   const frames = EXERCISE_FRAMES[exercise.id];
   if (frames) {
     return <Image source={frames[1]} style={{ width: size, height: size, borderRadius: radius.md, backgroundColor: '#fff' }} resizeMode="cover" />;

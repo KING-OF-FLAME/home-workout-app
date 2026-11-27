@@ -6,6 +6,8 @@ import { BannerAdSlot } from '@/components/BannerAdSlot';
 import { Button, Card, Divider, EmptyState, ErrorText, Field, ListRow, Loading, Row, Screen, SectionHeader, StatTile, Txt } from '@/components/ui';
 import { AppConfig, isFirebaseConfigured, trainerFeaturesAvailable } from '@/config';
 import { cancelCoachSyncReminder, scheduleCoachSyncReminder } from '@/lib/notifications';
+import { importFromFile } from '@/lib/offlineImport';
+import { buildProgressPacket, sharePacketFile } from '@/services/offlineShare';
 import { getCoachLink, syncWithTrainer, unlinkTrainer, type CoachLink } from '@/services/nearbySync';
 import {
   getRosterEntry,
@@ -170,6 +172,26 @@ function TrainerDashboard() {
         <ListRow icon="restaurant" iconColor={c.warning} title="Meal plans" subtitle="Meals, calories and macros" onPress={() => router.push('/trainer/meals')} />
       </Card>
 
+      {offline ? (
+        <>
+          <SectionHeader title="No Wi-Fi? Use a QR code or a file" />
+          <Card style={{ paddingVertical: spacing.sm }}>
+            <ListRow icon="qr-code" iconColor={c.primary} title="Scan a student's QR" subtitle="Adds a new student or saves their workouts" onPress={() => router.push('/scan')} />
+            <Divider />
+            <ListRow
+              icon="document-attach"
+              iconColor={c.accent}
+              title="Open a student's file"
+              subtitle="A .fithome file from WhatsApp, email or Files"
+              onPress={async () => { if (profile && (await importFromFile(profile))) load(); }}
+            />
+          </Card>
+          <Txt variant="caption" muted style={{ marginTop: spacing.sm }}>
+            To send plans back, open the student below and tap "Show plans as QR" or "Send plans as a file".
+          </Txt>
+        </>
+      ) : null}
+
       <SectionHeader title="Students" action="Add" onAction={() => router.push(addRoute)} />
       {students === null ? (
         <Loading />
@@ -221,6 +243,41 @@ function StudentView() {
 }
 
 /** Student without an account: joins and syncs with the trainer's phone over Wi-Fi or hotspot. */
+/** QR and file options for a student phone (no Wi-Fi needed). */
+function StudentOfflineOptions({ onChanged }: { onChanged: () => void }) {
+  const c = useColors();
+  const router = useRouter();
+  const { profile, refresh } = useAuth();
+  if (!profile) return null;
+  const sendFile = async () => {
+    try {
+      await sharePacketFile(await buildProgressPacket(profile));
+    } catch (e) {
+      Alert.alert('Could not share', e instanceof Error ? e.message : 'Try again.');
+    }
+  };
+  return (
+    <>
+      <SectionHeader title="No Wi-Fi? Use a QR code or a file" />
+      <Card style={{ paddingVertical: spacing.sm }}>
+        <ListRow icon="qr-code" iconColor={c.primary} title="Scan trainer's QR" subtitle="Get your plans from your trainer's screen" onPress={() => router.push('/scan')} />
+        <Divider />
+        <ListRow
+          icon="document-attach"
+          iconColor={c.accent}
+          title="Open a plan file"
+          subtitle="The .fithome file your trainer sent"
+          onPress={async () => { if (await importFromFile(profile)) { await refresh(); onChanged(); } }}
+        />
+        <Divider />
+        <ListRow icon="qr-code-outline" iconColor={c.success} title="Show my QR" subtitle="Your trainer scans it to add you or see your workouts" onPress={() => router.push({ pathname: '/share-qr', params: { kind: 'progress' } })} />
+        <Divider />
+        <ListRow icon="share-social" iconColor={c.warning} title="Send my progress as a file" subtitle="WhatsApp, email or any app" onPress={sendFile} />
+      </Card>
+    </>
+  );
+}
+
 function OfflineStudentView() {
   const c = useColors();
   const router = useRouter();
@@ -295,6 +352,7 @@ function OfflineStudentView() {
           <Button title="Join" icon="enter" onPress={() => sync(code)} loading={busy} disabled={code.replace(/[^0-9A-Z]/gi, '').length < 10} />
           {busy ? <Txt variant="caption" muted center style={{ marginTop: spacing.sm }}>Waiting for your trainer to accept…</Txt> : null}
         </Card>
+        <StudentOfflineOptions onChanged={load} />
         {AppConfig.features.allowTrainerSignup ? (
           <Card style={{ marginTop: spacing.md }}>
             <ListRow icon="people" iconColor={c.accent} title="I am a trainer" subtitle="Use this phone to coach students" onPress={becomeTrainer} />
@@ -339,7 +397,7 @@ function OfflineStudentView() {
           <Button title={editingCode ? 'Cancel' : 'New code'} small variant="secondary" onPress={() => setEditingCode((v) => !v)} style={{ flex: 1 }} />
         </Row>
         <Txt variant="caption" muted style={{ marginTop: spacing.sm }}>
-          Your coach turns on sharing; you both need the same Wi-Fi or their hotspot. If the code changed, tap New code.
+          Your coach turns on sharing; you both need the same Wi-Fi or their hotspot. If the code changed, tap New code. Not together? Use a QR code or a file below.
         </Txt>
       </Card>
 
@@ -378,6 +436,7 @@ function OfflineStudentView() {
           </Card>
         ))
       )}
+      <StudentOfflineOptions onChanged={load} />
       <BannerAdSlot placement="coach" />
       <Button
         title="Remove this coach"

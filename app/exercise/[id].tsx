@@ -4,7 +4,7 @@ import * as Speech from 'expo-speech';
 import { useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { BannerAdSlot } from '@/components/BannerAdSlot';
-import { ExerciseAnimation, hasDemo } from '@/components/ExerciseAnimation';
+import { ExerciseAnimation, type DemoMode, hasDemo } from '@/components/ExerciseAnimation';
 import { groupLabel } from '@/components/ExerciseThumb';
 import { MuscleMap, MusclePills } from '@/components/MuscleMap';
 import { ResultsTimeline } from '@/components/ResultsTimeline';
@@ -23,7 +23,7 @@ export default function ExerciseDetail() {
   const { id, fromPlayer } = useLocalSearchParams<{ id: string; fromPlayer?: string }>();
   const [playing, setPlaying] = useState(true);
   const [slow, setSlow] = useState(false);
-  const [photo, setPhoto] = useState(false);
+  const [mode, setMode] = useState<DemoMode>('body');
   const ex = getExercise(id);
   if (!ex) return <EmptyState icon="alert-circle" title="Exercise not found" />;
   const info = muscleInfo(ex);
@@ -35,12 +35,16 @@ export default function ExerciseDetail() {
     <Screen edges={['bottom']}>
       <Stack.Screen options={{ title: ex.name }} />
       <View style={{ alignItems: 'center', paddingTop: spacing.sm }}>
-        <ExerciseAnimation exercise={ex} width={width - spacing.lg * 2} playing={playing} speed={slow ? 0.45 : 1} photo={photo} />
+        <ExerciseAnimation exercise={ex} width={width - spacing.lg * 2} playing={playing} speed={slow ? 0.45 : 1} mode={mode} />
       </View>
       <Row style={{ justifyContent: 'center', marginTop: spacing.sm, flexWrap: 'wrap' }}>
         <Chip icon={playing ? 'pause' : 'play'} label={playing ? 'Pause' : 'Play'} onPress={() => setPlaying((p) => !p)} />
         <Chip icon="speedometer-outline" label="Slow motion" active={slow} onPress={() => setSlow((s) => !s)} />
-        {demo ? <Chip icon={photo ? 'body-outline' : 'image-outline'} label={photo ? 'Animation' : 'Real photos'} onPress={() => setPhoto((p) => !p)} /> : null}
+      </Row>
+      <Row style={{ justifyContent: 'center', marginTop: 4, flexWrap: 'wrap' }}>
+        <Chip icon="person" label="Real body" active={mode === 'body'} onPress={() => setMode('body')} />
+        <Chip icon="flame-outline" label="Muscles" active={mode === 'muscles'} onPress={() => setMode('muscles')} />
+        {demo ? <Chip icon="image-outline" label="Photos" active={mode === 'photo'} onPress={() => setMode('photo')} /> : null}
       </Row>
 
       <Txt variant="h1" center style={{ marginTop: spacing.md }}>
@@ -157,7 +161,7 @@ export default function ExerciseDetail() {
           Speech.speak(`${ex.name}. ${ex.steps.join(' ')} ${breathing} ${ex.tip ?? ''}`);
         }}
       />
-      {demo && photo ? (
+      {demo && mode === 'photo' ? (
         <Txt variant="caption" muted center style={{ marginTop: spacing.md }}>
           Demo photos: Free Exercise DB (public domain)
         </Txt>
