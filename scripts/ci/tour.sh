@@ -7,7 +7,17 @@ OUT=tour
 mkdir -p "$OUT"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
-tap() { for i in 1 2 3 4 5; do python3 "$DIR/tap.py" "$1" && return 0; python3 "$DIR/tap.py" "Wait" >/dev/null || true; sleep 1; done; echo "could not find: $1"; return 0; }
+# If something else covers the app (a system dialog, the home screen), print what it is and bring the app back.
+focus() { adb shell dumpsys window 2>/dev/null | grep -m1 -E "mCurrentFocus|mFocusedWindow" | tr -s ' '; }
+front() {
+  if ! focus | grep -q "$PKG"; then
+    echo "app not in front: $(focus)"
+    adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
+    adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
+    sleep 2
+  fi
+}
+tap() { for i in 1 2 3 4 5; do python3 "$DIR/tap.py" "$1" && return 0; python3 "$DIR/tap.py" "Wait" >/dev/null || true; front; sleep 1; done; echo "could not find: $1"; return 0; }
 shot() { sleep 2; adb exec-out screencap -p > "$OUT/$1.png"; echo "screenshot $1"; }
 
 # The emulator's home screen app sometimes hangs and its "isn't responding" dialog covers the app.

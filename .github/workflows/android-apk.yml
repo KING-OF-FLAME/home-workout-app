@@ -123,7 +123,7 @@ jobs:
             adb shell pidof ${{ needs.build.outputs.package }} > /dev/null || (echo "App is not running: it crashed on launch" && exit 1)
             echo "App is running after 30 seconds"
             bash scripts/ci/tour.sh ${{ needs.build.outputs.package }}
-            grep -q "sync test exit: 0" tour/sync-test.txt || (echo "Phone-to-phone sync test failed"; cat tour/sync-test.txt; adb logcat -d | grep -E "ReactNativeJS|TcpSocket" | tail -40; exit 1)
+            grep -q "sync test exit: 0" tour/sync-test.txt || (echo "Phone-to-phone sync test failed"; cat tour/sync-test.txt; adb logcat -d | grep -E "ReactNativeJS|TcpSocket|FATAL|AndroidRuntime|ANR in|has died" | tail -60; exit 1)
             adb shell pidof ${{ needs.build.outputs.package }} > /dev/null || (adb logcat -d | grep -E "FATAL EXCEPTION|AndroidRuntime|ReactNativeJS" | tail -60; echo "App crashed during the tour" && exit 1)
 
       - uses: actions/upload-artifact@v4
