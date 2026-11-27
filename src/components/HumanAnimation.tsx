@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Image, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, View } from 'react-native';
 import { BODY_LABEL, MUSCLE_INFO } from '@/data/muscles';
 import { HUMAN_FRAME, HUMAN_MOVES, HUMAN_SHEETS, HUMAN_THUMBS } from '@/data/humanSprites';
 import { useApp, useColors } from '@/store/AppStore';
@@ -45,39 +45,78 @@ export function HumanAnimation({
   const c = useColors();
   const move = HUMAN_MOVES[exerciseId];
   const sheet = HUMAN_SHEETS[sex][exerciseId];
-  const [frame, setFrame] = useState(0);
-  const frameRef = useRef(0);
+  const progress = useRef(new Animated.Value(0)).current;
+  const [cue, setCue] = useState(() => move?.cues.find(Boolean) || ' ');
+  const height = Math.round((width * HUMAN_FRAME.h) / HUMAN_FRAME.w);
+
+  // Frames step on the native side, so React does not re-render every frame.
+  // That keeps the JS thread free and lets screen readers and test tools see
+  // the screen as settled. Only the coaching cue updates from JS, and only
+  // when it changes.
+  const offsets = useMemo(() => {
+    if (!move) return null;
+    const input: number[] = [];
+    const xs: number[] = [];
+    const ys: number[] = [];
+    for (let i = 0; i < move.n; i++) {
+      const x = -(i % HUMAN_FRAME.cols) * width;
+      const y = -Math.floor(i / HUMAN_FRAME.cols) * height;
+      input.push(i, i + 0.999);
+      xs.push(x, x);
+      ys.push(y, y);
+    }
+    return {
+      x: progress.interpolate({ inputRange: input, outputRange: xs, extrapolate: 'clamp' }),
+      y: progress.interpolate({ inputRange: input, outputRange: ys, extrapolate: 'clamp' }),
+    };
+  }, [move, width, height, progress]);
+
+  useEffect(() => {
+    if (!move) return;
+    let last = '';
+    const id = progress.addListener(({ value }) => {
+      const i = Math.min(move.n - 1, Math.floor(value));
+      const next = move.cues[i] || '';
+      if (next && next !== last) {
+        last = next;
+        setCue(next);
+      }
+    });
+    return () => progress.removeListener(id);
+  }, [move, progress]);
 
   useEffect(() => {
     if (!move || !playing) return;
-    const stepMs = move.ms / move.n / Math.max(0.1, speed);
-    const t = setInterval(() => {
-      frameRef.current = (frameRef.current + 1) % move.n;
-      setFrame(frameRef.current);
-    }, stepMs);
-    return () => clearInterval(t);
-  }, [move, playing, speed]);
+    progress.setValue(0);
+    const loop = Animated.loop(
+      Animated.timing(progress, {
+        toValue: move.n,
+        duration: move.ms / Math.max(0.1, speed),
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [move, playing, speed, progress]);
 
-  if (!move || !sheet) return null;
-  const height = Math.round((width * HUMAN_FRAME.h) / HUMAN_FRAME.w);
+  if (!move || !sheet || !offsets) return null;
   const rows = Math.ceil(move.n / HUMAN_FRAME.cols);
-  const col = frame % HUMAN_FRAME.cols;
-  const row = Math.floor(frame / HUMAN_FRAME.cols);
   const primary = MUSCLE_INFO[exerciseId]?.primary ?? [];
-  const cue = move.cues[frame] || move.cues.find(Boolean) || ' ';
 
   return (
-    <View style={{ width, backgroundColor: c.surfaceAlt, borderRadius: radius.lg, overflow: 'hidden' }} accessibilityLabel={`Exercise demo: ${cue}`}>
+    <View style={{ width, backgroundColor: c.surfaceAlt, borderRadius: radius.lg, overflow: 'hidden' }} accessibilityLabel="Exercise demo">
       <View style={{ width, height, overflow: 'hidden', backgroundColor: '#0C0D10' }}>
-        <Image
+        <Animated.Image
           source={sheet}
           fadeDuration={0}
           style={{
             position: 'absolute',
+            left: 0,
+            top: 0,
             width: width * HUMAN_FRAME.cols,
             height: height * rows,
-            left: -col * width,
-            top: -row * height,
+            transform: [{ translateX: offsets.x }, { translateY: offsets.y }],
           }}
         />
       </View>
