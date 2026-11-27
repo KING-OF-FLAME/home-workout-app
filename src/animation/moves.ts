@@ -238,8 +238,8 @@ export const MOVES: Record<string, Move> = {
     view: 'side',
     props: [{ kind: 'mat', x: 100 }],
     frames: [
-      F(P({ ...PRONE, torso: 97, head: 100, uaN: -88, faN: -88, uaF: -88, faF: -88 }), at('hip', 100), { cue: 'Chest up, arms by your sides', ms: 700, hold: 150 }),
-      F(P({ ...PRONE, torso: 97, head: 100, uaN: -260, faN: -260, uaF: -260, faF: -260 }), at('hip', 100), { cue: 'Sweep arms overhead, off the floor', ms: 1100, hold: 150 }),
+      F(P({ ...PRONE, torso: 97, head: 100, uaN: -105, faN: -105, uaF: -105, faF: -105 }), at('hip', 100), { cue: 'Chest up, arms by your sides, off the floor', ms: 700, hold: 250 }),
+      F(P({ ...PRONE, torso: 97, head: 100, uaN: -120, faN: 70, uaF: -120, faF: 70 }), at('hip', 100), { cue: 'Slide the hands up to your shoulders', ms: 900, hold: 250 }),
     ],
   },
   'bird-dog': {
@@ -307,8 +307,8 @@ export const MOVES: Record<string, Move> = {
     view: 'front',
     props: [{ kind: 'mat', x: 100 }],
     frames: [
-      F(P({ torso: 172, head: 175, thN: 150, shN: 20, thF: 150, shF: 20, uaN: 40, faN: -60, uaF: -10, faF: -70 }), at('hip', 100), { cue: 'Lean back, turn to one side', ms: 500, hold: 120 }),
-      F(P({ torso: 188, head: 185, thN: 150, shN: 20, thF: 150, shF: 20, uaF: 40, faF: -60, uaN: -10, faN: -70 }), at('hip', 100), { cue: 'Turn your chest to the other side', ms: 500, hold: 120 }),
+      F(P({ torso: 172, head: 175, thN: 162, shN: 15, thF: 162, shF: 15, uaN: 25, faN: 60, uaF: -25, faF: 30 }), at('hip', 100), { cue: 'Lean back, hands to one side', ms: 550, hold: 150 }),
+      F(P({ torso: 188, head: 185, thN: 162, shN: 15, thF: 162, shF: 15, uaF: 25, faF: 60, uaN: -25, faN: 30 }), at('hip', 100), { cue: 'Turn and touch the other side', ms: 550, hold: 150 }),
     ],
   },
   'dead-bug': {
@@ -528,7 +528,7 @@ export const MOVES: Record<string, Move> = {
     props: [{ kind: 'mat', x: 100 }],
     frames: [
       F({ ...SUPINE_KNEES, thN: -165, shN: -60, ftN: -90 }, at('hip', 100), { cue: 'Ankle over the opposite knee', ms: 1000, hold: 200 }),
-      F({ ...SUPINE_KNEES, thF: -190, shF: -90, thN: -185, shN: -60, ftN: -90, uaN: -175, faN: -150, uaF: -175, faF: -150 }, at('hip', 100), { cue: 'Pull the leg in. Breathe', ms: 1200, hold: 1200 }),
+      F({ ...SUPINE_KNEES, thF: -170, shF: -70, thN: -180, shN: -60, ftN: -90 }, at('hip', 100), { cue: 'Ease the knees towards you. Breathe', ms: 1200, hold: 1200 }),
     ],
   },
   'chest-opener': {
@@ -551,8 +551,8 @@ export const MOVES: Record<string, Move> = {
     view: 'side',
     props: [{ kind: 'mat', x: 100 }],
     frames: [
-      F({ ...SUPINE_KNEES, uaN: 180, faN: 180, uaF: 180, faF: 180 }, at('hip', 100), { cue: 'Arms out, knees bent', ms: 1000, hold: 200 }),
-      F({ ...SUPINE_KNEES, thN: -125, shN: -60, thF: -125, shF: -60, uaN: 180, faN: 180, uaF: 180, faF: 180, head: 75 }, at('hip', 100), { cue: 'Let the knees fall to one side. Breathe', ms: 1400, hold: 1200 }),
+      F(SUPINE_KNEES, at('hip', 100), { cue: 'Arms relaxed on the floor, knees bent', ms: 1000, hold: 200 }),
+      F({ ...SUPINE_KNEES, thN: -125, shN: -60, thF: -125, shF: -60, head: 75 }, at('hip', 100), { cue: 'Let the knees fall to one side. Breathe', ms: 1400, hold: 1200 }),
     ],
   },
 
@@ -561,10 +561,8 @@ export const MOVES: Record<string, Move> = {
     view: 'side',
     props: [{ kind: 'mat', x: 100 }],
     frames: [
-      F(FOREARM_PLANK, at('toeN', 52), { level: ['handN', 'toeN'], cue: 'Start on your forearms', ms: 600, hold: 200 }),
-      F({ ...FOREARM_PLANK, uaN: 0, faN: 0 }, at('toeN', 52), { level: ['handN', 'toeN'], cue: 'Press up onto one hand', ms: 450, hold: 50 }),
-      F(PLANK, at('toeN', 52), { level: ['handN', 'toeN'], cue: 'Then the other, hips still', ms: 450, hold: 200 }),
-      F({ ...PLANK, faF: 90 }, at('toeN', 52), { level: ['handN', 'toeN'], cue: 'Lower back down one arm at a time', ms: 450, hold: 50 }),
+      F(FOREARM_PLANK, at('toeN', 52), { level: ['handN', 'toeN'], cue: 'Start on your forearms', ms: 600, hold: 250 }),
+      F(PLANK, at('toeN', 52), { level: ['handN', 'toeN'], cue: 'Press up onto your hands, one arm at a time', ms: 700, hold: 250 }),
     ],
   },
   'bear-plank': {
@@ -725,8 +723,40 @@ export const MOVES: Record<string, Move> = {
     view: 'side',
     props: [{ kind: 'chair', x: 28, back: 'left' }],
     frames: [
-      F(P({ torso: -118, head: -105, uaN: -95, faN: -95, uaF: -95, faF: -95, thN: 125, shN: 5, thF: 125, shF: 5 }), at('shoulderN', 54), { level: ['shoulderN', 'toeN', SEAT + 4, 'torso'], cue: 'Upper back on the chair, feet flat', ms: 800, hold: 150 }),
-      F(P({ torso: -90, head: -95, uaN: -95, faN: -95, uaF: -95, faF: -95, thN: 90, shN: 2, thF: 90, shF: 2 }), at('shoulderN', 54), { level: ['shoulderN', 'toeN', SEAT + 4, 'torso'], cue: 'Drive the hips up, squeeze', ms: 800, hold: 400 }),
+      F(P({ torso: -118, head: -105, uaN: 66, faN: 66, uaF: 66, faF: 66, thN: 125, shN: 5, thF: 125, shF: 5 }), at('shoulderN', 54), { level: ['shoulderN', 'toeN', SEAT + 4, 'torso'], cue: 'Upper back on the chair, feet flat', ms: 800, hold: 150 }),
+      F(P({ torso: -90, head: -95, uaN: 92, faN: 92, uaF: 92, faF: 92, thN: 90, shN: 2, thF: 90, shF: 2 }), at('shoulderN', 54), { level: ['shoulderN', 'toeN', SEAT + 4, 'torso'], cue: 'Drive the hips up, squeeze', ms: 800, hold: 400 }),
+    ],
+  },
+  // ---------- Pelvic floor (Kegel) ----------
+  'kegel-hold': {
+    view: 'side',
+    props: [{ kind: 'mat', x: 100 }],
+    frames: [
+      F({ ...SUPINE_KNEES, uaN: -60, faN: -150, uaF: -60, faF: -150 }, at('ankleN', 82), { cue: 'Squeeze and lift the pelvic floor, hold 5 s', ms: 700, hold: 2300 }),
+      F({ ...SUPINE_KNEES, torso: 92, uaN: -60, faN: -150, uaF: -60, faF: -150 }, at('ankleN', 82), { cue: 'Let go fully, relax 5 s', ms: 700, hold: 2300 }),
+    ],
+  },
+  'kegel-flicks': {
+    view: 'side',
+    props: [{ kind: 'mat', x: 100 }],
+    frames: [
+      F({ ...SUPINE_KNEES, uaN: -60, faN: -150, uaF: -60, faF: -150 }, at('ankleN', 82), { cue: 'Quick squeeze', ms: 260, hold: 240 }),
+      F({ ...SUPINE_KNEES, torso: 92, uaN: -60, faN: -150, uaF: -60, faF: -150 }, at('ankleN', 82), { cue: 'Let go', ms: 260, hold: 240 }),
+    ],
+  },
+  'bridge-squeeze': {
+    view: 'side',
+    props: [{ kind: 'mat', x: 100 }],
+    frames: [
+      F(SUPINE_KNEES, at('ankleN', 82), { cue: 'Feet flat, breathe in', ms: 900, hold: 200 }),
+      F({ ...SUPINE_KNEES, torso: 68, head: 90, thN: -115, shN: -15, thF: -115, shF: -15 }, at('ankleN', 82), { cue: 'Lift hips, squeeze pelvic floor, hold', ms: 900, hold: 1800 }),
+    ],
+  },
+  'deep-squat-hold': {
+    view: 'side',
+    frames: [
+      F({ ...SQUAT, torso: 155, head: 165, thN: 112, shN: -42, thF: 112, shF: -42, uaN: 40, faN: 150, uaF: 40, faF: 150 }, at('ankleN', 100), { cue: 'Sink low, chest up, breathe into the belly', ms: 1400, hold: 600 }),
+      F({ ...SQUAT, torso: 151, head: 162, thN: 116, shN: -44, thF: 116, shF: -44, uaN: 40, faN: 150, uaF: 40, faF: 150 }, at('ankleN', 100), { cue: 'Relax the pelvic floor as you breathe in', ms: 1400, hold: 600 }),
     ],
   },
 };
@@ -736,6 +766,6 @@ export { mirror };
 /** Exercises done lying on the back (or with the back on a chair): drawn facing up. */
 const FACE_UP = [
   'crunches', 'bicycle-crunches', 'leg-raises', 'dead-bug', 'flutter-kicks', 'heel-taps', 'v-ups', 'hollow-hold',
-  'glute-bridge', 'single-leg-bridge', 'figure-four', 'spinal-twist', 'reverse-crunches', 'chair-hip-thrust',
+  'glute-bridge', 'single-leg-bridge', 'kegel-hold', 'kegel-flicks', 'bridge-squeeze', 'figure-four', 'spinal-twist', 'reverse-crunches', 'chair-hip-thrust',
 ];
 for (const id of FACE_UP) if (MOVES[id]) MOVES[id].faceUp = true;

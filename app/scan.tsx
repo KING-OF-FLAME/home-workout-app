@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Stack, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, Linking, View } from 'react-native';
 import { Button, Card, Loading, Row, Screen, Txt } from '@/components/ui';
 import { applyPacket, importFromFile } from '@/lib/offlineImport';
 import { readPacket } from '@/services/offlineShare';
@@ -64,7 +64,7 @@ export default function Scan() {
 
   if (!permission.granted) {
     return (
-      <Screen>
+      <Screen edges={['bottom']}>
         <Stack.Screen options={{ title }} />
         <Card style={{ marginTop: spacing.lg }}>
           <Ionicons name="camera" size={32} color={c.primary} />
@@ -72,7 +72,19 @@ export default function Scan() {
           <Txt dim style={{ marginTop: 6, marginBottom: spacing.lg }}>
             The camera reads the code on the other phone. Nothing is recorded or sent anywhere.
           </Txt>
-          <Button title="Allow camera" icon="camera" onPress={requestPermission} />
+          {permission.canAskAgain ? null : (
+            <Txt variant="small" muted style={{ marginBottom: spacing.sm }}>
+              Camera access is turned off for this app. Turn it on in Settings, then come back.
+            </Txt>
+          )}
+          <Button
+            title={permission.canAskAgain ? 'Allow camera' : 'Open settings'}
+            icon="camera"
+            onPress={() => {
+              if (permission.canAskAgain) requestPermission().catch(() => undefined);
+              else Linking.openSettings().catch(() => Alert.alert('Could not open settings', 'Open your phone settings and allow the camera for this app.'));
+            }}
+          />
           <Button title="Open a file instead" variant="secondary" style={{ marginTop: spacing.sm }} onPress={async () => { if (await importFromFile(profile)) { await refresh(); router.back(); } }} />
         </Card>
       </Screen>
@@ -80,7 +92,7 @@ export default function Scan() {
   }
 
   return (
-    <Screen>
+    <Screen edges={['bottom']}>
       <Stack.Screen options={{ title }} />
       <View style={{ borderRadius: radius.lg, overflow: 'hidden', aspectRatio: 1, backgroundColor: '#000' }}>
         {working ? null : (

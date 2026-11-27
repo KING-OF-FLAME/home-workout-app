@@ -31,6 +31,7 @@ export default function EditWorkoutPlan() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [templates, setTemplates] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -49,9 +50,9 @@ export default function EditWorkoutPlan() {
   }, [id]);
 
   const save = async () => {
-    if (!profile) return;
-    if (!name.trim()) return setError('Give the plan a name.');
-    if (days.every((d) => d.items.length === 0)) return setError('Add at least one exercise.');
+    if (!profile || saving) return;
+    if (!name.trim()) return Alert.alert('Plan name needed', 'Give the plan a name at the top.');
+    if (days.every((d) => d.items.length === 0)) return Alert.alert('No exercises yet', 'Open a day and add at least one exercise.');
     setSaving(true);
     setError(null);
     try {
@@ -63,11 +64,26 @@ export default function EditWorkoutPlan() {
         level,
         days: days.filter((d) => d.items.length > 0),
       });
+      setSaving(false);
       router.back();
     } catch (e) {
-      setError(friendlyAuthError(e));
-    } finally {
+      const msg = friendlyAuthError(e);
+      setError(msg);
       setSaving(false);
+      Alert.alert('Could not save the plan', msg);
+    }
+  };
+
+  const remove = async () => {
+    if (!id || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteWorkoutPlan(id);
+      setDeleting(false);
+      router.back();
+    } catch (e) {
+      setDeleting(false);
+      Alert.alert('Could not delete the plan', friendlyAuthError(e));
     }
   };
 
@@ -90,7 +106,7 @@ export default function EditWorkoutPlan() {
       edges={['bottom']}
       footer={
         <View style={{ padding: spacing.lg, borderTopWidth: 1, borderTopColor: c.border }}>
-          <Button title="Save plan" icon="checkmark" onPress={save} loading={saving} />
+          <Button title="Save plan" icon="checkmark" onPress={save} loading={saving} disabled={deleting} />
         </View>
       }
     >
@@ -150,11 +166,18 @@ export default function EditWorkoutPlan() {
           title="Delete plan"
           variant="ghost"
           style={{ marginTop: spacing.lg }}
+          loading={deleting}
+          disabled={saving}
           onPress={() =>
-            Alert.alert('Delete plan?', 'Students who already have it keep their copy.', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Delete', style: 'destructive', onPress: async () => { await deleteWorkoutPlan(id); router.back(); } },
-            ])
+            Alert.alert(
+              'Delete plan?',
+              'Students who already have it keep their copy.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: remove },
+              ],
+              { cancelable: true },
+            )
           }
         />
       ) : null}

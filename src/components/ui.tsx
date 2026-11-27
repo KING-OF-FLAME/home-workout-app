@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import { HeaderHeightContext } from 'expo-router/react-navigation';
+import React, { useContext } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -37,17 +39,24 @@ export function Screen({
   contentStyle?: StyleProp<ViewStyle>;
 }) {
   const c = useColors();
+  // The app draws edge to edge, so the window no longer shrinks for the
+  // keyboard. Pad the content instead, so footer buttons and lower fields stay
+  // above it. KeyboardAvoidingView measures itself relative to this screen, so
+  // a navigation header above it is passed as the offset.
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const inner = [padded && { padding: spacing.lg }, { paddingBottom: spacing.xxl }, contentStyle];
   return (
     <SafeAreaView edges={edges} style={{ flex: 1, backgroundColor: c.bg }}>
-      {scroll ? (
-        <ScrollView contentContainerStyle={inner} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={[{ flex: 1 }, padded && { padding: spacing.lg }, contentStyle]}>{children}</View>
-      )}
-      {footer}
+      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={headerHeight} style={{ flex: 1 }}>
+        {scroll ? (
+          <ScrollView contentContainerStyle={inner} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={[{ flex: 1 }, padded && { padding: spacing.lg }, contentStyle]}>{children}</View>
+        )}
+        {footer}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Share, View } from 'react-native';
 import { Button, Card, ErrorText, Loading, Row, Screen, SectionHeader, Txt } from '@/components/ui';
 import { AppConfig } from '@/config';
-import { startHosting, type HostEvent, type HostHandle } from '@/services/nearbySync';
+import { getHostPin, rotateHostPin, startHosting, type HostEvent, type HostHandle } from '@/services/nearbySync';
 import { useColors } from '@/store/AppStore';
 import { useAuth } from '@/store/AuthStore';
 import { radius, spacing } from '@/theme';
@@ -32,21 +32,57 @@ export default function ShareWithStudents() {
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<HostEvent[]>([]);
   const hostRef = useRef<HostHandle | null>(null);
+  const startingRef = useRef(false);
+  const mounted = useRef(true);
 
-  const start = async () => {
-    if (!profile) return;
+  const start = async (fresh = false) => {
+    if (!profile || startingRef.current) return;
+    startingRef.current = true;
     setStarting(true);
     setError(null);
     try {
-      const h = await startHosting({ trainer: profile, approveJoin: ask, onEvent: (e) => setLog((l) => [e, ...l].slice(0, 30)) });
+      // The same code every time, so students' saved codes keep working.
+      const pin = fresh ? await rotateHostPin(profile.uid) : await getHostPin(profile.uid);
+      const opts = { trainer: profile, pin, approveJoin: ask, onEvent: (e: HostEvent) => setLog((l) => [e, ...l].slice(0, 30)) };
+      let h: HostHandle;
+      try {
+        h = await startHosting(opts);
+      } catch (first) {
+        // Right after Stop / New code the port can still be closing: try once more.
+        if (!(first instanceof Error) || !first.message.startsWith('Could not start sharing')) throw first;
+        await new Promise((r) => setTimeout(r, 700));
+        h = await startHosting(opts);
+      }
+      if (!mounted.current) {
+        h.stop();
+        return;
+      }
       hostRef.current = h;
       setHost(h);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not start sharing.');
     } finally {
-      setStarting(false);
+      startingRef.current = false;
+      if (mounted.current) setStarting(false);
     }
   };
+
+  const newCode = () =>
+    Alert.alert(
+      'Make a new code?',
+      'Students who saved the old code will need the new one to join or sync.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'New code',
+          onPress: () => {
+            stop();
+            start(true);
+          },
+        },
+      ],
+      { cancelable: true },
+    );
 
   const stop = () => {
     hostRef.current?.stop();
@@ -56,8 +92,13 @@ export default function ShareWithStudents() {
 
   // Start right away; stop when the trainer leaves this screen.
   useEffect(() => {
+    mounted.current = true;
     start();
-    return () => hostRef.current?.stop();
+    return () => {
+      mounted.current = false;
+      hostRef.current?.stop();
+      hostRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.uid]);
 
@@ -84,7 +125,7 @@ export default function ShareWithStudents() {
             <Txt variant="small" color="#ffffffcc" style={{ marginTop: spacing.sm }}>
               Keep this screen open while students join or sync.
             </Txt>
-            <Row style={{ marginTop: spacing.md }}>
+            <Row style={{ marginTop: spacing.md, flexWrap: 'wrap' }}>
               <Button
                 title="Share code"
                 icon="share-social"
@@ -96,13 +137,14 @@ export default function ShareWithStudents() {
                   }).catch(() => undefined)
                 }
               />
-              <Button title="Stop" variant="ghost" small onPress={stop} />
+              <Button title="New code" icon="refresh" variant="secondary" small onPress={newCode} />
+              <Button title="Stop" variant="secondary" small onPress={stop} />
             </Row>
           </>
         ) : (
           <>
             <ErrorText message={error} />
-            <Button title="Start sharing" icon="radio" style={{ marginTop: spacing.md }} loading={starting} onPress={start} />
+            <Button title="Start sharing" icon="radio" style={{ marginTop: spacing.md }} loading={starting} onPress={() => start()} />
           </>
         )}
       </Card>
@@ -123,7 +165,7 @@ export default function ShareWithStudents() {
           </Row>
         ))}
         <Txt variant="caption" muted>
-          The code changes each time you start sharing, so an old code cannot be reused by someone else.
+          Your code stays the same each time you share, so students can sync again with the code they saved. Tap New code if someone you removed still has it. If your phone gets a different Wi-Fi address, the code changes too.
         </Txt>
       </Card>
 

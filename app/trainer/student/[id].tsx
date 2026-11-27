@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { Button, Card, Divider, EmptyState, ErrorText, Field, ListRow, Loading, Row, Screen, SectionHeader, StatTile, Txt } from '@/components/ui';
 import { dayKey, friendlyDate, streaks } from '@/lib/dates';
@@ -34,6 +34,10 @@ export default function StudentDetail() {
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<'note' | 'remove' | 'plan' | null>(null);
+  // The note is filled in once per student, so coming back to this screen
+  // does not wipe what the trainer is typing.
+  const noteFor = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -44,7 +48,10 @@ export default function StudentDetail() {
         listCompletionsForStudent(profile.uid, id),
       ]);
       setStudent(s);
-      setNote(s?.note ?? '');
+      if (noteFor.current !== id) {
+        noteFor.current = id;
+        setNote(s?.note ?? '');
+      }
       setAssignments(a);
       setCompletions(comp);
     } catch (e) {
@@ -66,15 +73,44 @@ export default function StudentDetail() {
   const active = assignments.filter((a) => a.active);
   const past = assignments.filter((a) => !a.active);
 
+  /** Runs one change at a time and shows an alert if it fails. */
+  const run = async (kind: 'note' | 'remove' | 'plan', failTitle: string, fn: () => Promise<void>) => {
+    if (busy) return;
+    setBusy(kind);
+    try {
+      await fn();
+    } catch (e) {
+      Alert.alert(failTitle, friendlyAuthError(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const confirmDelete = (a: Assignment) =>
+    Alert.alert(
+      'Delete this plan?',
+      `"${a.title}" will be removed from ${student.name}'s plans. This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => run('plan', 'Could not delete', async () => { await deleteAssignment(a.id); await load(); }) },
+      ],
+      { cancelable: true },
+    );
+
+  // Android shows at most 3 buttons; tapping outside closes the dialog.
   const assignmentActions = (a: Assignment) =>
-    Alert.alert(a.title, undefined, [
-      { text: 'Update to latest plan version', onPress: async () => { try { await refreshAssignment(a); load(); } catch (e) { Alert.alert('Could not update', friendlyAuthError(e)); } } },
-      a.active
-        ? { text: 'Stop (archive)', onPress: async () => { await setAssignmentActive(a.id, false); load(); } }
-        : { text: 'Make active again', onPress: async () => { await setAssignmentActive(a.id, true); load(); } },
-      { text: 'Delete', style: 'destructive', onPress: async () => { await deleteAssignment(a.id); load(); } },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    Alert.alert(
+      a.title,
+      'Tap outside to close.',
+      [
+        { text: 'Update', onPress: () => run('plan', 'Could not update', async () => { await refreshAssignment(a); await load(); }) },
+        a.active
+          ? { text: 'Stop', onPress: () => run('plan', 'Could not stop the plan', async () => { await setAssignmentActive(a.id, false); await load(); }) }
+          : { text: 'Resume', onPress: () => run('plan', 'Could not resume the plan', async () => { await setAssignmentActive(a.id, true); await load(); }) },
+        { text: 'Delete…', style: 'destructive', onPress: () => confirmDelete(a) },
+      ],
+      { cancelable: true },
+    );
 
   return (
     <Screen edges={['bottom']}>
@@ -173,17 +209,32 @@ export default function StudentDetail() {
 
       <SectionHeader title="Private notes" />
       <Field value={note} onChangeText={setNote} multiline placeholder="Injuries, goals, preferences (only you can see this)" />
-      <Button title="Save note" small variant="secondary" style={{ alignSelf: 'flex-start' }} onPress={async () => { await updateStudentNote(profile.uid, id, note); Alert.alert('Saved'); }} />
+      <Button
+        title="Save note"
+        small
+        variant="secondary"
+        style={{ alignSelf: 'flex-start' }}
+        loading={busy === 'note'}
+        disabled={busy !== null}
+        onPress={() => run('note', 'Could not save the note', async () => { await updateStudentNote(profile.uid, id, note); Alert.alert('Saved'); })}
+      />
 
       <Button
         title="Remove student"
         variant="ghost"
         style={{ marginTop: spacing.xl }}
+        loading={busy === 'remove'}
+        disabled={busy !== null}
         onPress={() =>
-          Alert.alert('Remove student?', `${student.name} will leave your team and their plans will be archived.`, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Remove', style: 'destructive', onPress: async () => { await removeStudent(profile.uid, id); router.back(); } },
-          ])
+          Alert.alert(
+            'Remove student?',
+            `${student.name} will leave your team and their plans will be archived.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Remove', style: 'destructive', onPress: () => run('remove', 'Could not remove', async () => { await removeStudent(profile.uid, id); router.back(); }) },
+            ],
+            { cancelable: true },
+          )
         }
       />
     </Screen>

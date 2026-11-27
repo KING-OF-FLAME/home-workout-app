@@ -22,6 +22,10 @@ export interface MyPlan {
   completed: number[];
   /** 1 = as generated. Nudged by the "how did it feel?" answer. */
   intensity: number;
+  /** Workouts the user changed by hand, by session index. They replace the generated ones. */
+  edits?: Record<string, WorkoutItem[]>;
+  /** Exercises the user swapped everywhere: generated id -> the user's pick. */
+  swaps?: Record<string, string>;
 }
 
 export const PLAN_LENGTHS: { value: PlanLength; title: string; sub: string }[] = [
@@ -52,13 +56,15 @@ const FOCUS_GROUPS: Record<FocusArea, MuscleGroup[]> = {
   glutes: ['glutes'],
 };
 
-type DayType = 'full' | 'upper' | 'lower' | 'core' | 'hiit' | 'mobility' | 'focus';
+type DayType = 'full' | 'upper' | 'lower' | 'core' | 'hiit' | 'mobility' | 'focus' | 'pelvic' | 'power';
 
 const DAY_CYCLE: Record<Goal, DayType[]> = {
   lose_weight: ['hiit', 'full', 'core', 'lower', 'hiit', 'upper', 'full'],
   build_muscle: ['upper', 'lower', 'core', 'upper', 'lower', 'full', 'core'],
   get_fit: ['full', 'core', 'lower', 'upper', 'hiit', 'mobility', 'full'],
   flexibility: ['mobility', 'core', 'mobility', 'full', 'mobility', 'lower', 'mobility'],
+  strength: ['upper', 'lower', 'power', 'core', 'upper', 'lower', 'full'],
+  kegel: ['pelvic', 'pelvic', 'core', 'pelvic', 'mobility', 'pelvic', 'lower'],
 };
 
 const DAY_TITLE: Record<DayType, string> = {
@@ -69,16 +75,24 @@ const DAY_TITLE: Record<DayType, string> = {
   hiit: 'Fat-burn HIIT',
   mobility: 'Mobility & stretch',
   focus: 'Focus',
+  pelvic: 'Pelvic floor',
+  power: 'Power & jumps',
 };
 
-const DAY_GROUPS: Record<Exclude<DayType, 'focus'>, MuscleGroup[]> = {
+const DAY_GROUPS: Record<Exclude<DayType, 'focus' | 'pelvic'>, MuscleGroup[]> = {
   full: ['fullbody', 'legs', 'chest', 'core', 'glutes', 'back'],
   upper: ['chest', 'arms', 'shoulders', 'back'],
   lower: ['legs', 'glutes'],
   core: ['core'],
   hiit: ['cardio', 'fullbody', 'legs', 'core'],
   mobility: ['mobility'],
+  power: ['cardio', 'legs', 'fullbody'],
 };
+
+/** Pelvic floor days: Kegels first, then moves that train the deep core and hips around it. */
+const PELVIC_MAIN = ['kegel-hold', 'kegel-flicks', 'bridge-squeeze'];
+const PELVIC_SUPPORT = ['glute-bridge', 'dead-bug', 'bird-dog', 'fire-hydrants', 'squats', 'sumo-squats', 'reverse-crunches', 'single-leg-bridge'];
+const PELVIC_COOL = ['deep-squat-hold', 'butterfly-stretch', 'child-pose', 'cat-cow'];
 
 const VOLUME: Record<SessionMinutes, { warm: number; main: number; sets: number; cool: number }> = {
   10: { warm: 1, main: 4, sets: 2, cool: 1 },
@@ -172,8 +186,24 @@ function poolFor(groups: MuscleGroup[], plan: MyPlan, level: Level): Exercise[] 
   return close.length >= 4 ? close : list;
 }
 
-/** Build the workout for session number `session` (0-based). Same inputs always give the same workout. */
+/**
+ * The workout for session number `session` (0-based), with the user's own
+ * changes applied: a day they edited replaces the generated one, and swapped
+ * exercises are replaced everywhere.
+ */
 export function planWorkout(plan: MyPlan, session: number): Workout {
+  const w = generatedWorkout(plan, session);
+  const edited = plan.edits?.[String(session)];
+  if (edited) return { ...w, items: edited };
+  const swaps = plan.swaps;
+  if (swaps && Object.keys(swaps).length) {
+    return { ...w, items: w.items.map((it) => (swaps[it.exerciseId] ? { ...it, exerciseId: swaps[it.exerciseId] } : it)) };
+  }
+  return w;
+}
+
+/** Build the generated workout for a session. Same inputs always give the same workout. */
+export function generatedWorkout(plan: MyPlan, session: number): Workout {
   const week = weekOf(plan, session);
   const phase = phaseFor(plan, week);
   const level = levelFor(plan, week);
@@ -183,7 +213,7 @@ export function planWorkout(plan: MyPlan, session: number): Workout {
   const specific = plan.focus.filter((f) => f !== 'full');
 
   const groups =
-    type === 'focus' ? specific.flatMap((f) => FOCUS_GROUPS[f]) : DAY_GROUPS[type];
+    type === 'focus' ? specific.flatMap((f) => FOCUS_GROUPS[f]) : type === 'pelvic' ? (['core'] as MuscleGroup[]) : DAY_GROUPS[type];
   const byId = (ids: string[]) => EXERCISES.filter((e) => ids.includes(e.id) && allowed(e, plan, 3));
   const used = new Set<Exercise>();
   const take = (list: Exercise[], n: number) => {
@@ -191,22 +221,28 @@ export function planWorkout(plan: MyPlan, session: number): Workout {
     out.forEach((e) => used.add(e));
     return out;
   };
-  const warm = take(byId(WARMUP_IDS), vol.warm);
-  const cool = take(byId(COOLDOWN_IDS), vol.cool);
+  const pelvicDay = type === 'pelvic';
+  const warm = take(byId(pelvicDay ? ['cat-cow', 'hip-circles', 'march-in-place'] : WARMUP_IDS), vol.warm);
+  const cool = take(byId(pelvicDay ? PELVIC_COOL : COOLDOWN_IDS), vol.cool);
 
   // Leave one slot for the user's focus areas on normal training days.
-  const focusSlot = type !== 'focus' && type !== 'mobility' && specific.length > 0 ? 1 : 0;
-  let main = take(poolFor(groups, plan, level), vol.main - focusSlot);
+  const focusSlot = type !== 'focus' && type !== 'mobility' && type !== 'pelvic' && specific.length > 0 ? 1 : 0;
+  let main = pelvicDay
+    ? [...take(byId(PELVIC_MAIN), PELVIC_MAIN.length), ...take(byId(PELVIC_SUPPORT), Math.max(1, vol.main - PELVIC_MAIN.length))]
+    : take(poolFor(groups, plan, level), vol.main - focusSlot);
   if (focusSlot) main = [...main, ...take(poolFor(FOCUS_GROUPS[specific[session % specific.length]], plan, level), 1)];
   // Fill up from other moves if the pool was small.
   if (main.length < vol.main) main = [...main, ...take(poolFor(['fullbody', 'core', 'legs', 'glutes'], plan, level), vol.main - main.length)];
 
   // Progression: +4% per week up to +70%, recovery weeks drop back 20%.
-  const goalFactor = plan.goal === 'lose_weight' ? 1.05 : 1;
+  // Strength: fewer, harder reps with longer rests. Gaining muscle: an extra set.
+  const goalFactor = plan.goal === 'lose_weight' ? 1.05 : plan.goal === 'strength' ? 0.8 : 1;
   let factor = Math.min(1.7, 1 + 0.04 * (week - 1)) * goalFactor;
   if (phase.deload) factor *= 0.8;
-  const sets = Math.max(1, phase.deload ? vol.sets - 1 : vol.sets);
-  const baseRest = plan.goal === 'lose_weight' ? 20 : plan.goal === 'build_muscle' ? 40 : 30;
+  const extraSet = plan.goal === 'build_muscle' || plan.goal === 'strength' ? 1 : 0;
+  const sets = Math.max(1, (phase.deload ? vol.sets - 1 : vol.sets) + extraSet);
+  const baseRest =
+    plan.goal === 'lose_weight' ? 20 : plan.goal === 'strength' ? 55 : plan.goal === 'build_muscle' ? 45 : plan.goal === 'kegel' ? 20 : 30;
   const rest = Math.max(15, Math.round(baseRest - (phase.name === 'Peak' ? 5 : 0)));
 
   const item = (e: Exercise, s: number, f: number, note?: string): WorkoutItem => ({

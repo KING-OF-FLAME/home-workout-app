@@ -28,6 +28,7 @@ export default function EditMealPlan() {
   const [dayIdx, setDayIdx] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -50,17 +51,33 @@ export default function EditMealPlan() {
   const setMeal = (mi: number, patch: Partial<Meal>) => setDay({ meals: day.meals.map((m, i) => (i === mi ? { ...m, ...patch } : m)) });
 
   const save = async () => {
-    if (!profile) return;
-    if (!name.trim()) return setError('Give the meal plan a name.');
+    if (!profile || saving) return;
+    if (!name.trim()) return Alert.alert('Plan name needed', 'Give the meal plan a name at the top.');
+    if (days.every((d) => d.meals.length === 0)) return Alert.alert('No meals yet', 'Add at least one meal.');
     setSaving(true);
     setError(null);
     try {
       await saveMealPlan({ id, trainerId: profile.uid, name: name.trim(), description: description.trim(), targetCalories: target, days });
+      setSaving(false);
       router.back();
     } catch (e) {
-      setError(friendlyAuthError(e));
-    } finally {
+      const msg = friendlyAuthError(e);
+      setError(msg);
       setSaving(false);
+      Alert.alert('Could not save the meal plan', msg);
+    }
+  };
+
+  const remove = async () => {
+    if (!id || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteMealPlan(id);
+      setDeleting(false);
+      router.back();
+    } catch (e) {
+      setDeleting(false);
+      Alert.alert('Could not delete the meal plan', friendlyAuthError(e));
     }
   };
 
@@ -71,7 +88,7 @@ export default function EditMealPlan() {
       edges={['bottom']}
       footer={
         <View style={{ padding: spacing.lg, borderTopWidth: 1, borderTopColor: c.border }}>
-          <Button title="Save meal plan" icon="checkmark" onPress={save} loading={saving} />
+          <Button title="Save meal plan" icon="checkmark" onPress={save} loading={saving} disabled={deleting} />
         </View>
       }
     >
@@ -162,11 +179,18 @@ export default function EditMealPlan() {
           <Button
             title="Delete meal plan"
             variant="ghost"
+            loading={deleting}
+            disabled={saving}
             onPress={() =>
-              Alert.alert('Delete meal plan?', 'Students who already have it keep their copy.', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Delete', style: 'destructive', onPress: async () => { await deleteMealPlan(id); router.back(); } },
-              ])
+              Alert.alert(
+                'Delete meal plan?',
+                'Students who already have it keep their copy.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Delete', style: 'destructive', onPress: remove },
+                ],
+                { cancelable: true },
+              )
             }
           />
         </View>

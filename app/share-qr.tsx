@@ -62,7 +62,7 @@ export default function ShareQr() {
   const workouts = packet?.fithome === 'progress' ? packet.completions.length : 0;
 
   return (
-    <Screen>
+    <Screen edges={['bottom']}>
       <Stack.Screen options={{ title }} />
       <ErrorText message={error} />
       {packet ? (

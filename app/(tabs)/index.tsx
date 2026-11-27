@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { BannerAdSlot } from '@/components/BannerAdSlot';
 import { ExerciseThumb } from '@/components/ExerciseThumb';
@@ -30,6 +30,18 @@ export default function Home() {
   const coachPlans = useAsync(
     async () => (trainerFeaturesAvailable && auth.profile?.trainerId ? listMyAssignments(auth.profile.uid) : []),
     [auth.profile?.uid, auth.profile?.trainerId],
+  );
+  // Refresh on focus too, so plans from a sync or QR show up when coming back here.
+  const firstFocus = useRef(true);
+  const reloadCoachPlans = coachPlans.reload;
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        return;
+      }
+      reloadCoachPlans();
+    }, [reloadCoachPlans]),
   );
   const coachWorkout = coachPlans.data?.find((a) => a.type === 'workout');
   const coachMeal = coachPlans.data?.find((a) => a.type === 'meal');

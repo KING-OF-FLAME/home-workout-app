@@ -23,11 +23,13 @@ export default function Complete() {
   const adapts = session?.kind === 'program' || session?.kind === 'plan';
 
   const rate = (f: NonNullable<Session['feeling']>) => {
-    if (!session || feeling) return;
+    if (!session || feeling === f) return;
+    const first = !feeling;
     setFeeling(f);
     setSessionFeeling(session.id, f);
-    if (session.kind === 'program') adjustProgramIntensity(session.refId, f);
-    if (session.kind === 'plan') adjustPlanIntensity(f);
+    // The plan adapts once per workout; changing the answer only updates the record.
+    if (first && session.kind === 'program') adjustProgramIntensity(session.refId, f);
+    if (first && session.kind === 'plan') adjustPlanIntensity(f);
   };
 
   const share = () =>

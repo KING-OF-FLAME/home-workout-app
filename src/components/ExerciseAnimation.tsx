@@ -4,25 +4,43 @@ import { Animated, Easing, Image, View } from 'react-native';
 import { EXERCISE_FRAMES } from '@/data/exerciseMedia';
 import { muscleInfo } from '@/data/muscles';
 import type { Exercise } from '@/data/types';
-import { useColors } from '@/store/AppStore';
+import { useApp, useColors, type DemoStyle } from '@/store/AppStore';
 import { muscleColors, radius } from '@/theme';
 import { ExerciseFigure, hasFigure } from './ExerciseFigure';
 import { HumanAnimation, hasHuman, useBodySex } from './HumanAnimation';
 import { MuscleMap } from './MuscleMap';
-import { Txt } from './ui';
+import { Chip, Row, Txt } from './ui';
 
 /** True when real start/finish photos exist for this exercise. */
 export function hasDemo(id: string): boolean {
   return Boolean(EXERCISE_FRAMES[id]);
 }
 
-export type DemoMode = 'body' | 'muscles' | 'photo';
+export type DemoMode = DemoStyle;
+
+/** Demo styles in the order the switch shows them. */
+export const DEMO_STYLES: { id: DemoStyle; label: string; icon: 'body' | 'man' | 'accessibility' | 'image-outline' }[] = [
+  { id: '3d', label: '3D body', icon: 'body' },
+  { id: 'drawn', label: 'Drawn', icon: 'man' },
+  { id: 'simple', label: 'Simple', icon: 'accessibility' },
+  { id: 'photo', label: 'Photos', icon: 'image-outline' },
+];
+
+/** Styles that really exist for this exercise (Photos only where photos ship). */
+export function stylesFor(id: string, sex: 'male' | 'female' = 'male'): DemoStyle[] {
+  return DEMO_STYLES.map((s) => s.id).filter((s) =>
+    s === '3d' ? hasHuman(id, sex) : s === 'photo' ? Boolean(EXERCISE_FRAMES[id]) : hasFigure(id),
+  );
+}
 
 /**
- * Exercise demo.
- *  - body (default): a realistic male or female body (from Profile) performs the move.
- *  - muscles: the drawn figure with the worked muscles glowing.
+ * Exercise demo in the style the user picked (Profile, or the switch on the
+ * exercise page and in the player):
+ *  - 3d: a realistic male or female 3D body performs the move.
+ *  - drawn: the detailed drawn body with the worked muscles glowing.
+ *  - simple: the first, lighter stick figure.
  *  - photo: real start and finish photos crossfade (for exercises that have them).
+ * If a style is missing for an exercise, the next best one is shown.
  */
 export function ExerciseAnimation({
   exercise,
@@ -44,17 +62,41 @@ export function ExerciseAnimation({
   showCue?: boolean;
 }) {
   const sex = useBodySex();
-  const m: DemoMode = mode ?? (photo ? 'photo' : 'body');
+  const { settings } = useApp();
+  const m: DemoMode = mode ?? (photo ? 'photo' : settings.demoStyle ?? '3d');
   if (m === 'photo' && EXERCISE_FRAMES[exercise.id]) {
     return <PhotoDemo exercise={exercise} width={width} playing={playing} speed={speed} />;
   }
-  if (m === 'body' && hasHuman(exercise.id, sex)) {
+  if (m === '3d' && hasHuman(exercise.id, sex)) {
     return <HumanAnimation exerciseId={exercise.id} width={width} sex={sex} playing={playing} speed={speed} showCue={showCue} />;
   }
   if (hasFigure(exercise.id)) {
-    return <ExerciseFigure exerciseId={exercise.id} width={width} playing={playing} speed={speed} showCue={showCue} />;
+    return <ExerciseFigure exerciseId={exercise.id} width={width} playing={playing} speed={speed} showCue={showCue} variant={m === 'simple' ? 'simple' : 'drawn'} />;
+  }
+  if (hasHuman(exercise.id, sex)) {
+    return <HumanAnimation exerciseId={exercise.id} width={width} sex={sex} playing={playing} speed={speed} showCue={showCue} />;
   }
   return <PhotoDemo exercise={exercise} width={width} playing={playing} speed={speed} />;
+}
+
+
+/**
+ * Chips to switch the demo style. The choice is saved, so the player, the
+ * exercise pages and the lists all use it until it is changed again.
+ */
+export function DemoStyleSwitch({ exerciseId, compact = false }: { exerciseId: string; compact?: boolean }) {
+  const sex = useBodySex();
+  const { settings, updateSettings } = useApp();
+  const available = stylesFor(exerciseId, sex);
+  if (available.length < 2) return null;
+  const current = available.includes(settings.demoStyle) ? settings.demoStyle : available[0];
+  return (
+    <Row style={{ justifyContent: 'center', flexWrap: 'wrap', marginTop: compact ? 2 : 4 }} gap={compact ? 4 : 8}>
+      {DEMO_STYLES.filter((d) => available.includes(d.id)).map((d) => (
+        <Chip key={d.id} icon={d.icon} label={d.label} active={current === d.id} onPress={() => updateSettings({ demoStyle: d.id })} />
+      ))}
+    </Row>
+  );
 }
 
 function PhotoDemo({ exercise, width, playing, speed }: { exercise: Exercise; width: number; playing: boolean; speed: number }) {

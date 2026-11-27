@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Linking, Switch, View } from 'react-native';
 import { BannerAdSlot } from '@/components/BannerAdSlot';
+import { DEMO_STYLES } from '@/components/ExerciseAnimation';
 import { Card, Chip, Divider, Field, ListRow, Row, Screen, SectionHeader, Stepper, Txt, Button } from '@/components/ui';
 import { AppConfig } from '@/config';
 import type { Goal, Level } from '@/data/types';
@@ -131,6 +132,14 @@ export default function SettingsScreen() {
           <Chip label="Woman" active={profile.sex === 'female'} onPress={() => updateProfile({ sex: 'female' })} />
         </Row>
         <Txt variant="label" muted style={{ marginBottom: 6 }}>
+          Demo style
+        </Txt>
+        <Row style={{ marginBottom: spacing.md, flexWrap: 'wrap' }}>
+          {DEMO_STYLES.map((d) => (
+            <Chip key={d.id} icon={d.icon} label={d.label} active={settings.demoStyle === d.id} onPress={() => updateSettings({ demoStyle: d.id })} />
+          ))}
+        </Row>
+        <Txt variant="label" muted style={{ marginBottom: 6 }}>
           Level
         </Txt>
         <Row style={{ marginBottom: spacing.md }}>
@@ -144,7 +153,11 @@ export default function SettingsScreen() {
         </Row>
         <Row style={{ justifyContent: 'space-between' }}>
           <Txt>Height</Txt>
-          <Stepper value={profile.heightCm} min={100} max={250} onChange={(heightCm) => updateProfile({ heightCm })} suffix="cm" />
+          {settings.units === 'imperial' ? (
+            <Stepper value={Math.round(profile.heightCm / 2.54)} min={39} max={98} onChange={(inch) => updateProfile({ heightCm: Math.round(inch * 2.54) })} suffix="in" />
+          ) : (
+            <Stepper value={profile.heightCm} min={100} max={250} onChange={(heightCm) => updateProfile({ heightCm })} suffix="cm" />
+          )}
         </Row>
       </Card>
 

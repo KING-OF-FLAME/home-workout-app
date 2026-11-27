@@ -4,6 +4,7 @@ import Svg, { Circle, Line, Path, Polygon, Rect } from 'react-native-svg';
 import { bodyShapes } from '@/animation/body';
 import { MOVES } from '@/animation/moves';
 import type { FigureColors, Shape } from '@/animation/render';
+import { simpleShapes } from '@/animation/simple';
 import { prepare, sample, timeline, VIEW_H, VIEW_W, type PreparedFrame, type Timeline } from '@/animation/skeleton';
 import { BODY_LABEL, MUSCLE_INFO } from '@/data/muscles';
 import { useColors } from '@/store/AppStore';
@@ -64,6 +65,7 @@ export function ExerciseFigure({
   showMuscles = true,
   background,
   rounded = true,
+  variant = 'drawn',
 }: {
   exerciseId: string;
   width: number;
@@ -73,6 +75,8 @@ export function ExerciseFigure({
   showMuscles?: boolean;
   background?: string;
   rounded?: boolean;
+  /** drawn = detailed body with muscles; simple = the first, lighter stick figure. */
+  variant?: 'drawn' | 'simple';
 }) {
   const c = useColors();
   const data = prepared(exerciseId);
@@ -115,7 +119,10 @@ export function ExerciseFigure({
   // A still frame shows the most telling position: the end of the first move.
   const t = playing || time > 0 ? time : data.tl.segments[Math.min(1, data.tl.segments.length - 1)].start + data.tl.segments[Math.min(1, data.tl.segments.length - 1)].move;
   const r = sample(data.prepared, data.tl, t, data.move.view);
-  const shapes = bodyShapes(r.points, data.move.view, data.move.props, r.spine, hot, warm, colors, data.move.faceUp);
+  const shapes =
+    variant === 'simple'
+      ? simpleShapes(r.points, data.move.view, data.move.props, r.spine, hot, colors)
+      : bodyShapes(r.points, data.move.view, data.move.props, r.spine, hot, warm, colors, data.move.faceUp);
   const pulse = 0.55 + 0.45 * Math.sin(t / 260);
   const height = (width * VIEW_H) / VIEW_W;
 

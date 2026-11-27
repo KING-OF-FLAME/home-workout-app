@@ -163,6 +163,10 @@ export const MUSCLE_INFO: Record<string, MuscleInfo> = {
   'standing-glute-kickback': m(['gluteal'], ['hamstring', 'lower-back'], 'Arching the lower back.', 'Swinging the leg instead of squeezing.'),
   'good-mornings': m(['hamstring', 'lower-back'], ['gluteal'], 'Rounding the back.', 'Bending the knees into a squat.'),
   'chair-hip-thrust': m(['gluteal'], ['hamstring', 'abs'], 'Arching the lower back at the top.', 'Chair sliding away.'),
+  'kegel-hold': m(['abs'], ['gluteal'], 'Squeezing the glutes or thighs instead of the pelvic floor.', 'Holding the breath while squeezing.'),
+  'kegel-flicks': m(['abs'], ['gluteal'], 'Not letting go fully between squeezes.', 'Bearing down instead of lifting up.'),
+  'bridge-squeeze': m(['gluteal', 'abs'], ['hamstring'], 'Arching the lower back at the top.', 'Forgetting to relax the pelvic floor on the way down.'),
+  'deep-squat-hold': m(['adductors', 'gluteal'], ['calves'], 'Heels lifting off the floor.', 'Rounding the back.'),
 };
 
 const GROUP_FALLBACK: Record<MuscleGroup, BodySlug[]> = {
