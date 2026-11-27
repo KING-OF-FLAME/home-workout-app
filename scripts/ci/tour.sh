@@ -32,7 +32,7 @@ adb shell pm clear "$PKG" >/dev/null
 swipe() { adb shell input swipe 540 1800 540 650 500; sleep 1; }
 back() { adb shell input keyevent 4; sleep 1; }
 # Open a screen by its link (no scrolling needed). $PKG is the app id.
-open_link() { adb shell am start -W -a android.intent.action.VIEW -d "fithome://$1" "$PKG" >/dev/null; sleep 3; }
+open_link() { adb shell am start -W -a android.intent.action.VIEW -d "'fithome://$1'" "$PKG" >/dev/null; sleep 3; }
 # Stop the screen recording on the phone so the mp4 is finished before it is pulled.
 stoprec() { adb shell pkill -INT screenrecord 2>/dev/null || true; kill -INT $REC 2>/dev/null || true; wait $REC 2>/dev/null || true; sleep 3; }
 
@@ -123,10 +123,9 @@ if [ -n "$CODE" ]; then
   cat "$OUT/sync-test.txt"
   back; sleep 2; shot 31-trainer-students
   # No Wi-Fi options: the student's plans as QR codes, and the scanner.
-  tap "CI Student"; sleep 2
-  tap "Show plans as QR"; sleep 3; shot 32-plans-qr
-  back; back; sleep 1
-  tap "Scan a student's QR"; sleep 2
+  open_link "/share-qr?kind=plan&student=u_ci_student"; sleep 2; shot 32-plans-qr
+  back; sleep 1
+  open_link /scan; sleep 2
   tap "Allow camera"; sleep 2; tap "While using the app"; sleep 3; shot 33-scan-qr
   back; sleep 1
 else

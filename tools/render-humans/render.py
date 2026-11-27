@@ -133,7 +133,8 @@ def orient(name, d_world, f_world=None):
     else:
         cy = (cur.to_3x3() @ Vector((0, 1, 0))).normalized()
         rot = cy.rotation_difference(d).to_matrix() @ cur.to_3x3()
-    pb.matrix = Matrix.Translation(head) @ rot.to_4x4()
+    pb.matrix = Matrix.Translation(head) @ rot.normalized().to_4x4()
+    pb.scale = (1, 1, 1)
     update()
 
 def set_visible_for_pose(vis):
@@ -262,6 +263,7 @@ def pose_frame(move, fr, settle=True):
     for pb in bones:
         pb.rotation_quaternion = (1, 0, 0, 0)
         pb.location = (0, 0, 0)
+        pb.scale = (1, 1, 1)
     update()
     # Hip position from the 2D frame.
     hx = (p['hip'][0] - 100) * UNIT

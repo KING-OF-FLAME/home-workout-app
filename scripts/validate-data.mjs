@@ -77,6 +77,15 @@ for (const [ip, pin] of [['192.168.1.23', 0], ['10.0.2.15', 65535], ['172.20.10.
   if (!back || back.ip !== ip || back.pin !== pin) errors.push(`sync code ${code} does not decode back to ${ip}/${pin}`);
 }
 
+// Every exercise needs a realistic demo for both bodies (sprite sheet + thumbnail).
+for (const ex of EXERCISES) {
+  for (const sex of ['male', 'female']) {
+    for (const f of [`assets/humans/${sex}/${ex.id}.webp`, `assets/humans/${sex}/thumbs/${ex.id}.webp`]) {
+      if (!existsSync(new URL(`../${f}`, import.meta.url))) errors.push(`${ex.id}: missing ${f}`);
+    }
+  }
+}
+
 // QR / file packets must survive encoding, splitting into QR parts (scanned in any order) and decoding.
 {
   const packet = { fithome: 'plan', v: 1, note: 'Ünïcode ✓ नमस्ते', items: Array.from({ length: 300 }, (_, i) => ({ id: `a${i}`, title: `Day ${i}`, reps: i * 3 })) };
