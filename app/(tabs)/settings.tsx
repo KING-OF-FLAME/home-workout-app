@@ -7,6 +7,7 @@ import { Card, Chip, Divider, Field, ListRow, Row, Screen, SectionHeader, Steppe
 import { AppConfig } from '@/config';
 import type { Goal, Level } from '@/data/types';
 import { privacyOptionsRequired, showPrivacyOptions } from '@/lib/ads';
+import { planLengthLabel } from '@/lib/planGenerator';
 import { cancelReminders, scheduleDailyReminder } from '@/lib/notifications';
 import { useApp, useColors } from '@/store/AppStore';
 import { friendlyAuthError, useAuth } from '@/store/AuthStore';
@@ -33,7 +34,7 @@ function SwitchRow({ title, subtitle, value, onChange }: { title: string; subtit
 export default function SettingsScreen() {
   const c = useColors();
   const router = useRouter();
-  const { profile, settings, updateProfile, updateSettings, resetAllData } = useApp();
+  const { profile, settings, myPlan, updateProfile, updateSettings, resetAllData } = useApp();
   const auth = useAuth();
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [deletePw, setDeletePw] = useState('');
@@ -136,6 +137,18 @@ export default function SettingsScreen() {
           <Txt>Height</Txt>
           <Stepper value={profile.heightCm} min={100} max={250} onChange={(heightCm) => updateProfile({ heightCm })} suffix="cm" />
         </Row>
+      </Card>
+
+      <SectionHeader title="My plan" />
+      <Card style={{ paddingVertical: spacing.sm }}>
+        {myPlan ? (
+          <>
+            <ListRow icon="calendar" title={planLengthLabel(myPlan.length)} subtitle={`${myPlan.daysPerWeek} a week · ~${myPlan.minutes} min · ${myPlan.completed.length} done`} onPress={() => router.push('/plan')} />
+            <ListRow icon="options-outline" title="Change my plan" onPress={() => router.push({ pathname: '/onboarding', params: { planOnly: '1' } })} />
+          </>
+        ) : (
+          <ListRow icon="add-circle-outline" title="Build my personal plan" onPress={() => router.push({ pathname: '/onboarding', params: { planOnly: '1' } })} />
+        )}
       </Card>
 
       <SectionHeader title="Workout" />

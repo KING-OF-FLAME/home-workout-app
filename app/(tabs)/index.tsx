@@ -3,10 +3,13 @@ import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { BannerAdSlot } from '@/components/BannerAdSlot';
+import { ExerciseThumb } from '@/components/ExerciseThumb';
 import { Button, Card, ProgressBar, Row, Screen, SectionHeader, Txt } from '@/components/ui';
 import { trainerFeaturesAvailable } from '@/config';
+import { getExercise } from '@/data/exercises';
 import { QUICK_WORKOUTS } from '@/data/programs';
 import { addDays, dayKey, greeting, startOfWeek } from '@/lib/dates';
+import { nextSession, phaseFor, planDay, planFinished, planLengthLabel, planWorkout, totalSessions, weekOf } from '@/lib/planGenerator';
 import { activeProgram, recommendedPrograms, tipOfTheDay } from '@/lib/recommend';
 import { useAsync } from '@/lib/useAsync';
 import { equipmentSummary, estimateMinutes } from '@/lib/workout';
@@ -20,7 +23,7 @@ const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 export default function Home() {
   const c = useColors();
   const router = useRouter();
-  const { profile, stats, programProgress, history } = useApp();
+  const { profile, stats, programProgress, history, myPlan } = useApp();
   const auth = useAuth();
   const isStudent = Boolean(auth.profile?.trainerId);
 
@@ -37,6 +40,10 @@ export default function Home() {
   const nextDay = active?.nextDay ?? 0;
   const done = programProgress[program.id]?.completedDays.length ?? 0;
   const workout = program.days[nextDay];
+
+  const planNext = myPlan ? nextSession(myPlan) : 0;
+  const planToday = useMemo(() => (myPlan && !planFinished(myPlan) ? planWorkout(myPlan, planNext) : null), [myPlan, planNext]);
+  const planTotal = myPlan ? totalSessions(myPlan) : 0;
 
   const weekStart = startOfWeek(new Date());
   const weekDays = WEEKDAYS.map((label, i) => ({ label, key: dayKey(addDays(weekStart, i)) }));
@@ -147,7 +154,76 @@ export default function Home() {
         </>
       ) : null}
 
-      <SectionHeader title={active ? 'Continue your plan' : 'Recommended for you'} action="See all" onAction={() => router.push('/workouts')} />
+      {myPlan ? (
+        <>
+          <SectionHeader title="Today's workout" action="My plan" onAction={() => router.push('/plan')} />
+          {planToday ? (
+            <Card tint={c.primary} onPress={() => router.push({ pathname: '/workout/preview', params: { kind: 'plan', id: myPlan.id, day: String(planNext) } })}>
+              <Row style={{ justifyContent: 'space-between' }}>
+                <Txt variant="label" color="#ffffffcc">
+                  {planLengthLabel(myPlan.length)} · {myPlan.length ? `Day ${Math.min(planDay(myPlan), myPlan.length)} of ${myPlan.length}` : `Day ${planDay(myPlan)}`}
+                </Txt>
+                <Txt variant="label" color="#ffffffcc">
+                  Week {weekOf(myPlan, planNext)}
+                </Txt>
+              </Row>
+              <Txt variant="h2" color="#fff" style={{ marginTop: 6 }}>
+                {planToday.title}
+              </Txt>
+              <Txt color="#ffffffdd" style={{ marginTop: 2 }}>
+                {phaseFor(myPlan, weekOf(myPlan, planNext)).name} · ~{estimateMinutes(planToday, myPlan.intensity)} min · {planToday.items.length} exercises
+              </Txt>
+              <Row gap={6} style={{ marginTop: spacing.md }}>
+                {planToday.items
+                  .filter((it) => !it.note)
+                  .slice(0, 5)
+                  .map((it, i) => {
+                    const ex = getExercise(it.exerciseId);
+                    return ex ? <ExerciseThumb key={i} exercise={ex} size={44} /> : null;
+                  })}
+              </Row>
+              {Number.isFinite(planTotal) ? (
+                <View style={{ marginTop: spacing.md }}>
+                  <ProgressBar value={myPlan.completed.length / planTotal} color="#fff" />
+                  <Txt variant="caption" color="#ffffffcc" style={{ marginTop: 6 }}>
+                    {myPlan.completed.length}/{planTotal} workouts done
+                  </Txt>
+                </View>
+              ) : (
+                <Txt variant="caption" color="#ffffffcc" style={{ marginTop: spacing.sm }}>
+                  {myPlan.completed.length} workouts done
+                </Txt>
+              )}
+              <Button
+                title={myPlan.completed.length ? 'Start workout' : 'Start day 1'}
+                icon="play"
+                variant="secondary"
+                small
+                style={{ alignSelf: 'flex-start', marginTop: spacing.md }}
+                onPress={() => router.push({ pathname: '/workout/preview', params: { kind: 'plan', id: myPlan.id, day: String(planNext) } })}
+              />
+            </Card>
+          ) : (
+            <Card onPress={() => router.push('/plan')}>
+              <Txt variant="h3">Plan complete! 🎉</Txt>
+              <Txt dim style={{ marginTop: 4 }}>Tap to start a new plan and keep progressing.</Txt>
+            </Card>
+          )}
+        </>
+      ) : (
+        <Card style={{ marginTop: spacing.lg }} onPress={() => router.push({ pathname: '/onboarding', params: { planOnly: '1' } })}>
+          <Row>
+            <Ionicons name="calendar" size={26} color={c.primary} />
+            <View style={{ flex: 1 }}>
+              <Txt variant="h3">Build my personal plan</Txt>
+              <Txt variant="small" muted>30, 60, 90 or 365 days, made for your goal</Txt>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
+          </Row>
+        </Card>
+      )}
+
+      <SectionHeader title={active ? 'Continue your program' : 'More programs'} action="See all" onAction={() => router.push('/workouts')} />
       <Card onPress={() => router.push({ pathname: '/program/[id]', params: { id: program.id } })}>
         <Row>
           <View style={{ width: 52, height: 52, borderRadius: radius.md, backgroundColor: program.color + '26', alignItems: 'center', justifyContent: 'center' }}>

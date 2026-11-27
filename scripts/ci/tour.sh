@@ -12,13 +12,17 @@ shot() { sleep 2; adb exec-out screencap -p > "$OUT/$1.png"; echo "screenshot $1
 
 adb shell am force-stop "$PKG"
 adb shell pm clear "$PKG" >/dev/null
-adb shell screenrecord --time-limit 170 --bit-rate 6000000 /sdcard/tour.mp4 &
+swipe() { adb shell input swipe 540 1800 540 650 500; sleep 1; }
+back() { adb shell input keyevent 4; sleep 1; }
+
+# The video is recorded in parts (Android stops a recording after 3 minutes), then joined.
+adb shell screenrecord --time-limit 175 --bit-rate 6000000 /sdcard/tour-1.mp4 &
 REC=$!
 sleep 1
 adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null
 sleep 8
 
-# Onboarding
+# Onboarding: name, goal, level, plan length, focus areas, then the generated plan
 shot 01-welcome
 tap "Continue"
 sleep 1; adb shell input text "Yash"; adb shell input keyevent 111
@@ -27,25 +31,56 @@ tap "Lose weight"; shot 02-goal
 tap "Continue"
 shot 03-level
 tap "Continue"
+tap "90 days"; shot 04-plan-length
+tap "Continue"
+tap "20 min"; tap "Abs"; shot 05-plan-focus
+tap "Continue"
+tap "Continue"
+sleep 2; shot 06-plan-ready
+swipe; shot 07-plan-week-1
 tap "Start training"
-sleep 3; shot 04-today
+sleep 3; shot 08-today
 
-# Tabs
-tap "Workouts"; shot 05-workouts
-tap "Beginner Full Body"; shot 06-program
-tap "Start program"; shot 07-workout-preview
-tap "Start workout"; sleep 3; shot 08-player-get-ready
-sleep 10; shot 09-player-exercise
-adb shell input keyevent 4; sleep 1; tap "Quit"; sleep 2
-adb shell input keyevent 4; sleep 1; adb shell input keyevent 4; sleep 1
-tap "Exercises"; shot 10-exercise-library
-tap "Jumping Jacks"; shot 11-exercise-detail
-adb shell input keyevent 4; sleep 1; adb shell input keyevent 4; sleep 1
-tap "Progress"; shot 12-progress
-tap "Coach"; shot 13-coach
-tap "Profile"; shot 14-profile
+# Personal plan, then a real workout with exercise demos
+tap "My plan"; sleep 2; shot 09-my-plan
+back
+tap "Start day 1"; sleep 2; shot 10-workout-preview
+swipe; shot 11-workout-muscles
+tap "Start workout"; sleep 2; shot 12-player-get-ready
+sleep 12; shot 13-player-exercise
+sleep 3; shot 13b-player-exercise
+sleep 25; shot 14-player-rest
+back; tap "Save & end"; sleep 3; shot 15-complete
+swipe; shot 16-complete-muscles
+tap "Done"; sleep 2
+
+kill -INT $REC 2>/dev/null; sleep 3
+adb shell screenrecord --time-limit 175 --bit-rate 6000000 /sdcard/tour-2.mp4 &
+REC=$!
+sleep 1
+
+# Library and exercise detail: demo animation, steps, mistakes, body map
+tap "Workouts"; shot 17-workouts
+tap "Exercises"; shot 18-exercise-library
+tap "Push-ups"; sleep 3; shot 19-exercise-detail
+swipe; shot 20-exercise-how-to
+swipe; shot 21-exercise-mistakes
+swipe; shot 22-exercise-muscles
+back; back
+tap "Progress"; sleep 2; shot 23-progress
+swipe; shot 24-progress-muscles
+tap "Coach"; shot 25-coach
+tap "Profile"; shot 26-profile
 tap "Today"; sleep 2
 
 kill -INT $REC 2>/dev/null; sleep 4
-adb pull /sdcard/tour.mp4 "$OUT/tour.mp4" >/dev/null && echo "video saved"
+adb pull /sdcard/tour-1.mp4 "$OUT/tour-1.mp4" >/dev/null
+adb pull /sdcard/tour-2.mp4 "$OUT/tour-2.mp4" >/dev/null
+if command -v ffmpeg >/dev/null; then
+  printf "file 'tour-1.mp4'\nfile 'tour-2.mp4'\n" > "$OUT/parts.txt"
+  ffmpeg -loglevel error -f concat -safe 0 -i "$OUT/parts.txt" -c copy "$OUT/tour.mp4" && rm -f "$OUT/tour-1.mp4" "$OUT/tour-2.mp4"
+  rm -f "$OUT/parts.txt"
+fi
+[ -f "$OUT/tour.mp4" ] || mv "$OUT/tour-1.mp4" "$OUT/tour.mp4"
+echo "video saved"
 ls -la "$OUT"

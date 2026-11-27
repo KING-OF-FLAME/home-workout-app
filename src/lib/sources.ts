@@ -2,6 +2,7 @@ import { PROGRAM_MAP, QUICK_MAP } from '@/data/programs';
 import type { Workout } from '@/data/types';
 import { getAssignment } from '@/services/cloud';
 import type { WorkoutSourceKind } from '@/store/AppStore';
+import { planLengthLabel, planWorkout, type MyPlan } from './planGenerator';
 
 export interface ResolvedWorkout {
   workout: Workout;
@@ -18,6 +19,7 @@ export async function resolveWorkout(
   id: string,
   day: number | undefined,
   custom: Workout[],
+  plan?: MyPlan | null,
 ): Promise<ResolvedWorkout | null> {
   switch (kind) {
     case 'program': {
@@ -32,6 +34,11 @@ export async function resolveWorkout(
     case 'custom': {
       const w = custom.find((x) => x.id === id);
       return w ? { workout: w, title: w.title, subtitle: 'My workout' } : null;
+    }
+    case 'plan': {
+      if (!plan || plan.id !== id) return null;
+      const w = planWorkout(plan, day ?? 0);
+      return { workout: w, title: w.title, subtitle: `${planLengthLabel(plan.length)} · Workout ${(day ?? 0) + 1}` };
     }
     case 'assignment': {
       const a = await getAssignment(id);
