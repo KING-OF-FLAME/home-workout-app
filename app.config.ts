@@ -69,6 +69,14 @@ const config: ExpoConfig = {
       },
     ],
     [
+      'expo-camera',
+      {
+        cameraPermission: 'The camera reads FitHome QR codes from your trainer’s or student’s phone. Nothing is recorded.',
+        microphonePermission: false,
+        recordAudioAndroid: false,
+      },
+    ],
+    [
       'expo-build-properties',
       {
         android: {

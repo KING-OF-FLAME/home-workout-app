@@ -23,13 +23,13 @@ The app needs no account and no internet. Everything is stored on the phone.
 
 - **Today**: the next workout of your plan ("Day X of N"), your week, streak, quick workouts and coach plans if you have a coach.
 - **Start a workout**: tap the plan card → check the exercises and the muscles they train → **Start workout**.
-- **During the workout**: the animated figure performs each move; glowing muscles are the ones working (red = main muscles, light = helpers). The line under the figure tells you what to do at that moment. Timed moves count down; for reps tap **Done**. Pause, previous and next are at the bottom. **How to do it** opens the full instructions and pauses the workout.
+- **During the workout**: a realistic man or woman (your choice in onboarding or Profile → Exercise demos show) performs each move, with the main muscles named on top. The line under the figure tells you what to do at that moment. Timed moves count down; for reps tap **Done**. Pause, previous and next are at the bottom. **How to do it** opens the full instructions and pauses the workout.
 - **After the workout**: you see the time, calories, the muscles you trained and what they gain. Answer "How did that feel?" and the next workouts adjust.
 
 ## 4. Exercises
 
 - **Workouts → Exercises** lists all 87 exercises with search and filters.
-- Each exercise page has the animation (pause, slow motion), real photos for 43 exercises, steps, breathing, common mistakes, muscles worked on a body map, what it improves, and a "what to expect" timeline (general guidance, not a promise).
+- Each exercise page has three demo views: **Real body** (realistic man or woman, rendered in 3D), **Muscles** (drawn figure with the worked muscles glowing) and **Photos** (real photos, 43 exercises). Pause and slow motion work on all of them. You also get steps, breathing, common mistakes, muscles worked on a body map, what it improves, and a "what to expect" timeline (general guidance, not a promise).
 
 ## 5. Progress and muscles
 
@@ -62,6 +62,17 @@ A new code is made each time sharing starts, so old codes stop working.
 3. Plans appear in the Coach tab and on Today. Finished workouts go to the trainer at the next sync.
 4. Tap **Sync now** every week (you get a reminder). If the trainer's code changed, tap **New code** first.
 5. **Remove this coach** deletes their plans from your phone. You can join again with a new code.
+
+### No Wi-Fi: QR codes and files
+
+Works anywhere, even with no network at all.
+
+1. **Student**: Coach tab → **Show my QR** (or **Send my progress as a file** to share it on WhatsApp, email or any app).
+2. **Trainer**: Coach tab → **Scan a student's QR** (or **Open a student's file**). A new student is added after you confirm; their finished workouts are saved.
+3. **Trainer**: open the student → assign plans → **Show plans as QR** (or **Send as a file**).
+4. **Student**: Coach tab → **Scan trainer's QR** (or **Open a plan file**). The plans appear right away.
+
+Big plans are shown as a few QR codes that change by themselves; keep the camera on the screen until it says all codes are in. Files end in `.fithome`; open them from the app with **Open a plan file** / **Open a student's file** (after saving them from WhatsApp to your phone).
 
 ### If sync fails
 

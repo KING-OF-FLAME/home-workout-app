@@ -32,7 +32,7 @@ adb shell pm clear "$PKG" >/dev/null
 swipe() { adb shell input swipe 540 1800 540 650 500; sleep 1; }
 back() { adb shell input keyevent 4; sleep 1; }
 # Open a screen by its link (no scrolling needed). $PKG is the app id.
-open_link() { adb shell am start -W -a android.intent.action.VIEW -d "fithome://$1" "$PKG" >/dev/null; sleep 3; }
+open_link() { adb shell am start -W -a android.intent.action.VIEW -d "'fithome://$1'" "$PKG" >/dev/null; sleep 3; }
 # Stop the screen recording on the phone so the mp4 is finished before it is pulled.
 stoprec() { adb shell pkill -INT screenrecord 2>/dev/null || true; kill -INT $REC 2>/dev/null || true; wait $REC 2>/dev/null || true; sleep 3; }
 
@@ -84,7 +84,7 @@ sleep 1
 tap "Workouts"; shot 17-workouts
 tap "Exercises"; shot 18-exercise-library
 tap "Push-ups"; sleep 3; shot 19-exercise-detail
-tap "Real photos"; sleep 2; shot 19b-exercise-photos; tap "Animation"; sleep 1
+tap "Photos"; sleep 2; shot 19b-exercise-photos; tap "Muscles"; sleep 2; shot 19c-exercise-muscles-view; tap "Real body"; sleep 1
 swipe; shot 20-exercise-how-to
 swipe; shot 21-exercise-mistakes
 swipe; shot 22-exercise-muscles
@@ -95,6 +95,11 @@ open_link /muscles; shot 24b-muscles-detail
 swipe; shot 24c-muscles-list
 back
 tap "Profile"; shot 26-profile
+# Switch the demo body to the woman and look at an exercise.
+tap "Woman"; sleep 1
+open_link /exercise/squats; sleep 2; shot 26b-female-demo
+back
+tap "Man"; sleep 1
 open_link /help; shot 27-how-to-use
 back
 
@@ -117,6 +122,12 @@ if [ -n "$CODE" ]; then
   wait $SYNC; echo "sync test exit: $?" >> "$OUT/sync-test.txt"
   cat "$OUT/sync-test.txt"
   back; sleep 2; shot 31-trainer-students
+  # No Wi-Fi options: the student's plans as QR codes, and the scanner.
+  open_link "/share-qr?kind=plan&student=u_ci_student"; sleep 2; shot 32-plans-qr
+  back; sleep 1
+  open_link /scan; sleep 2
+  tap "Allow camera"; sleep 2; tap "While using the app"; sleep 3; shot 33-scan-qr
+  back; sleep 1
 else
   echo "sync test exit: no code" > "$OUT/sync-test.txt"
 fi

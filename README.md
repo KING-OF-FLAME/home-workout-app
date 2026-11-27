@@ -42,7 +42,9 @@ See **docs/USER_GUIDE.md** for a step-by-step guide to every feature.
 
 **Exercise demos and body map**
 - Animated demo for every one of the 65 exercises: a figure drawn in code performs the move in a loop, the worked muscles glow, and a cue under it says what to do at each moment (pause and slow motion). No video files, so the template can be resold without licence problems
-- Real photo demos (start and end position) for 43 exercises, one tap away from the animation
+- Realistic demos for all 87 exercises: a man or a woman (user's choice) performs each move, rendered in 3D from CC0 MakeHuman bodies, with pause and slow motion
+- Muscles view: drawn figure with the worked muscles glowing
+- Real photo demos (start and end position) for 43 exercises
 - "What to expect" timeline on each exercise (general guidance, never promised results)
 - Animated front/back body map on every exercise, on the workout preview, after each workout, and a weekly muscle heat map on Progress
 - Breathing cue, common mistakes and "what it improves" for every exercise
@@ -75,6 +77,7 @@ See **docs/USER_GUIDE.md** for a step-by-step guide to every feature.
 - No accounts needed: any phone can be a trainer or a member phone
 - Phone-to-phone sync: the trainer taps "Share & sync", gets a 10-character code (local IP + PIN), students on the same Wi-Fi or the trainer's hotspot enter it to join (trainer accepts) and later tap "Sync now" to get new plans and send finished workouts
 - Removed students lose the plans at their next sync; students can remove their coach; weekly sync reminder
+- No network at all: plans and progress as QR codes (scanned with the camera) or a .fithome file shared on WhatsApp, email or any app
 - Optional cloud mode: add Firebase keys to use email accounts, invite codes and live sync instead
 - Student roster with private notes, weekly activity, streak and total minutes
 - Workout plan builder: multiple days, any exercises, sets/reps/time/rest, per-exercise coach notes, duplicate days, start from a built-in template
@@ -249,6 +252,7 @@ Checklist for a new app:
 ## Customising content
 
 - **Exercise animations**: `src/animation/moves.ts` describes each move as a few key poses (joint angles), with cues and timing. `npm run validate-data` checks that every exercise has one and that the figure stays in the frame. The figure is drawn by `src/components/ExerciseFigure.tsx`.
+- **Realistic demos**: sprite sheets in `assets/humans/<male|female>/`, listed in `src/data/humanSprites.ts`. `tools/render-humans/` has the Blender + MakeHuman scripts that render them from the same key poses (see its README).
 - **Exercise photos**: photos live in `assets/exercises/<exercise-id>-0.jpg` (start) and `-1.jpg` (end), listed in `src/data/exerciseMedia.ts`. Add a pair and a line there to give another exercise a demo. To use your own licensed GIFs or videos instead, replace `ExerciseAnimation` in `src/components/ExerciseAnimation.tsx`.
 - **Muscles and mistakes**: `src/data/muscles.ts` (body regions per exercise, common mistakes, benefits shown on the body map).
 - **Personal plan rules**: `src/lib/planGenerator.ts` (plan lengths, day types per goal, minutes to volume, phases and progression).

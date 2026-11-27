@@ -124,8 +124,11 @@ export const MOVES: Record<string, Move> = {
   'mountain-climbers': {
     view: 'side',
     frames: [
-      F({ ...PLANK, thN: 55, shN: -25, ftN: 40 }, at('handN', 140), { level: ['handN', 'toeF'], cue: 'Knee to chest', ms: 260, hold: 20 }),
-      F({ ...PLANK, thF: 55, shF: -25, ftF: 40 }, at('handN', 140), { level: ['handN', 'toeN'], cue: 'Switch fast, hips low', ms: 260, hold: 20 }),
+      F({ ...PLANK, thN: 70, shN: -80, ftN: -20 }, at('handN', 140), { level: ['handN', 'toeF'], cue: 'Knee to chest', ms: 200, hold: 20 }),
+      // Both feet hop off the floor while the legs swap.
+      F({ ...PLANK, thN: 0, shN: -95, thF: 0, shF: -95, ftN: -80, ftF: -80 }, at('handN', 140), { level: ['handN', 'kneeN', 4], cue: 'Switch fast, hips low', ms: 120, hold: 0 }),
+      F({ ...PLANK, thF: 70, shF: -80, ftF: -20 }, at('handN', 140), { level: ['handN', 'toeN'], cue: 'Switch fast, hips low', ms: 120, hold: 20 }),
+      F({ ...PLANK, thN: 0, shN: -95, thF: 0, shF: -95, ftN: -80, ftF: -80 }, at('handN', 140), { level: ['handN', 'kneeN', 4], cue: 'Knee to chest', ms: 120, hold: 0 }),
     ],
   },
   'jump-squats': {
@@ -559,7 +562,7 @@ export const MOVES: Record<string, Move> = {
     props: [{ kind: 'mat', x: 100 }],
     frames: [
       F(FOREARM_PLANK, at('toeN', 52), { level: ['handN', 'toeN'], cue: 'Start on your forearms', ms: 600, hold: 200 }),
-      F({ ...FOREARM_PLANK, uaN: 0, faN: 0 }, at('toeN', 52), { level: ['handF', 'toeN'], cue: 'Press up onto one hand', ms: 450, hold: 50 }),
+      F({ ...FOREARM_PLANK, uaN: 0, faN: 0 }, at('toeN', 52), { level: ['handN', 'toeN'], cue: 'Press up onto one hand', ms: 450, hold: 50 }),
       F(PLANK, at('toeN', 52), { level: ['handN', 'toeN'], cue: 'Then the other, hips still', ms: 450, hold: 200 }),
       F({ ...PLANK, faF: 90 }, at('toeN', 52), { level: ['handN', 'toeN'], cue: 'Lower back down one arm at a time', ms: 450, hold: 50 }),
     ],

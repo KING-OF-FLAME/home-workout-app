@@ -90,6 +90,7 @@ export default function Onboarding() {
   const [pos, setPos] = useState(0);
   const step = order[pos];
   const [name, setName] = useState(profile.name);
+  const [sex, setSex] = useState<'male' | 'female'>(profile.sex ?? 'male');
   const [goal, setGoal] = useState<Goal>(profile.goal);
   const [level, setLevel] = useState<Level>(profile.level);
   const [days, setDays] = useState(profile.daysPerWeek);
@@ -117,7 +118,7 @@ export default function Onboarding() {
   };
 
   const finish = () => {
-    updateProfile({ name: name.trim() || profile.name, goal, level, daysPerWeek: days, weightKg: weight, heightCm: height, onboarded: true });
+    updateProfile({ name: name.trim() || profile.name, sex, goal, level, daysPerWeek: days, weightKg: weight, heightCm: height, onboarded: true });
     setMyPlan({ ...draftPlan, id: uid('plan_'), createdAt: Date.now() });
     if (planOnly === '1' && router.canGoBack()) router.back();
     else router.replace('/');
@@ -175,6 +176,11 @@ export default function Onboarding() {
           <Txt variant="h1">What should we call you?</Txt>
           <Spacer />
           <Field placeholder="Your first name" value={name} onChangeText={setName} autoFocus maxLength={30} />
+          <Spacer />
+          <Txt variant="h3">Show exercises with</Txt>
+          <Txt variant="small" dim style={{ marginBottom: spacing.md }}>Every demo is performed by this body. Change it anytime in Profile.</Txt>
+          <Option title="Man" sub="Male body in the demos" icon="man" active={sex === 'male'} onPress={() => setSex('male')} />
+          <Option title="Woman" sub="Female body in the demos" icon="woman" active={sex === 'female'} onPress={() => setSex('female')} />
         </View>
       )}
 

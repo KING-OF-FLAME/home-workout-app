@@ -7,6 +7,7 @@ import type { Exercise } from '@/data/types';
 import { useColors } from '@/store/AppStore';
 import { muscleColors, radius } from '@/theme';
 import { ExerciseFigure, hasFigure } from './ExerciseFigure';
+import { HumanAnimation, hasHuman, useBodySex } from './HumanAnimation';
 import { MuscleMap } from './MuscleMap';
 import { Txt } from './ui';
 
@@ -15,10 +16,13 @@ export function hasDemo(id: string): boolean {
   return Boolean(EXERCISE_FRAMES[id]);
 }
 
+export type DemoMode = 'body' | 'muscles' | 'photo';
+
 /**
- * Exercise demo. By default an animated figure performs the move with the
- * worked muscles glowing. With `photo`, real start and finish photos crossfade
- * instead (for exercises that have them).
+ * Exercise demo.
+ *  - body (default): a realistic male or female body (from Profile) performs the move.
+ *  - muscles: the drawn figure with the worked muscles glowing.
+ *  - photo: real start and finish photos crossfade (for exercises that have them).
  */
 export function ExerciseAnimation({
   exercise,
@@ -26,6 +30,7 @@ export function ExerciseAnimation({
   playing = true,
   speed = 1,
   photo = false,
+  mode,
   showCue = true,
 }: {
   exercise: Exercise;
@@ -33,10 +38,20 @@ export function ExerciseAnimation({
   playing?: boolean;
   /** 1 = normal tempo, lower is slower. */
   speed?: number;
+  /** Older flag, same as mode="photo". */
   photo?: boolean;
+  mode?: DemoMode;
   showCue?: boolean;
 }) {
-  if (!(photo && EXERCISE_FRAMES[exercise.id]) && hasFigure(exercise.id)) {
+  const sex = useBodySex();
+  const m: DemoMode = mode ?? (photo ? 'photo' : 'body');
+  if (m === 'photo' && EXERCISE_FRAMES[exercise.id]) {
+    return <PhotoDemo exercise={exercise} width={width} playing={playing} speed={speed} />;
+  }
+  if (m === 'body' && hasHuman(exercise.id, sex)) {
+    return <HumanAnimation exerciseId={exercise.id} width={width} sex={sex} playing={playing} speed={speed} showCue={showCue} />;
+  }
+  if (hasFigure(exercise.id)) {
     return <ExerciseFigure exerciseId={exercise.id} width={width} playing={playing} speed={speed} showCue={showCue} />;
   }
   return <PhotoDemo exercise={exercise} width={width} playing={playing} speed={speed} />;

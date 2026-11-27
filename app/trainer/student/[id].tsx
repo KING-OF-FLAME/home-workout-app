@@ -20,6 +20,7 @@ import {
 } from '@/services/cloud';
 import { useColors } from '@/store/AppStore';
 import { friendlyAuthError, useAuth } from '@/store/AuthStore';
+import { buildPlanPacket, sharePacketFile } from '@/services/offlineShare';
 import { spacing } from '@/theme';
 
 export default function StudentDetail() {
@@ -93,6 +94,29 @@ export default function StudentDetail() {
         <Button title="Workout plan" icon="barbell" small style={{ flex: 1 }} onPress={() => router.push({ pathname: '/trainer/assign', params: { student: id, type: 'workout' } })} />
         <Button title="Meal plan" icon="restaurant" small variant="secondary" style={{ flex: 1 }} onPress={() => router.push({ pathname: '/trainer/assign', params: { student: id, type: 'meal' } })} />
       </Row>
+
+      <SectionHeader title="Send plans to their phone" />
+      <Row>
+        <Button title="Show plans as QR" icon="qr-code" small style={{ flex: 1 }} onPress={() => router.push({ pathname: '/share-qr', params: { kind: 'plan', student: id } })} />
+        <Button
+          title="Send as a file"
+          icon="share-social"
+          small
+          variant="secondary"
+          style={{ flex: 1 }}
+          onPress={async () => {
+            if (!profile) return;
+            try {
+              await sharePacketFile(await buildPlanPacket(profile, id));
+            } catch (e) {
+              Alert.alert('Could not share', e instanceof Error ? e.message : 'Try again.');
+            }
+          }}
+        />
+      </Row>
+      <Txt variant="caption" muted style={{ marginTop: spacing.sm }}>
+        Works with no Wi-Fi. On the same Wi-Fi you can also use Share & sync.
+      </Txt>
 
       <SectionHeader title={`Active plans (${active.length})`} />
       {active.length === 0 ? (

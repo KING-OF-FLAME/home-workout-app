@@ -38,7 +38,8 @@ export const HELP: HelpSection[] = [
     icon: 'body',
     title: 'Exercise pages',
     steps: [
-      'Every exercise has an animation with pause and slow motion. Many also have real photos: tap "Real photos".',
+      'Every exercise is shown by a realistic body, a man or a woman as you chose (change it in Profile → Exercise demos show). Pause and slow motion work on every demo.',
+      'Tap "Muscles" to see the worked muscles glow on a drawn figure, or "Photos" for real photos where available.',
       'You also get step-by-step instructions, breathing, common mistakes, the muscles worked and what to expect over the weeks.',
       'Tap "Read instructions aloud" to hear them.',
     ],
@@ -61,6 +62,7 @@ export const HELP: HelpSection[] = [
       'When a new student enters your code, tap Accept. Then open the student and assign plans.',
       'Once a week (or whenever you like), turn sharing on and ask students to tap Sync now. They get your latest plans; you see their finished workouts.',
       'Remove a student from their page. Their plans are removed from their phone at their next sync.',
+      'No Wi-Fi? Coach → "Scan a student\'s QR" (or "Open a student\'s file") adds the student and their workouts. Then open the student → "Show plans as QR" or "Send as a file" (WhatsApp, email, any app).',
     ],
   },
   {
@@ -72,6 +74,7 @@ export const HELP: HelpSection[] = [
       'Your plans appear in the Coach tab and on Today. Workouts you finish are sent to your trainer at the next sync.',
       'Tap Sync now each week. If your trainer’s code changed, tap New code first. You will get a weekly reminder.',
       'Tap "Remove this coach" anytime to remove their plans from your phone.',
+      'No Wi-Fi? Coach tab → "Show my QR" (or "Send my progress as a file") so your trainer can add you. Then "Scan trainer\'s QR" or "Open a plan file" to get your plans. Works when you are in different places too: the file can go on WhatsApp.',
     ],
   },
   {

@@ -16,6 +16,8 @@ export interface Profile {
   heightCm: number;
   daysPerWeek: number;
   onboarded: boolean;
+  /** Which body the exercise demos show. */
+  sex?: 'male' | 'female';
 }
 
 export interface Settings {
@@ -67,6 +69,7 @@ const defaultProfile: Profile = {
   heightCm: 170,
   daysPerWeek: 3,
   onboarded: false,
+  sex: 'male',
 };
 
 const defaultSettings: Settings = {

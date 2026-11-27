@@ -124,6 +124,13 @@ export default function SettingsScreen() {
           ))}
         </Row>
         <Txt variant="label" muted style={{ marginBottom: 6 }}>
+          Exercise demos show
+        </Txt>
+        <Row style={{ marginBottom: spacing.md }}>
+          <Chip label="Man" active={(profile.sex ?? 'male') === 'male'} onPress={() => updateProfile({ sex: 'male' })} />
+          <Chip label="Woman" active={profile.sex === 'female'} onPress={() => updateProfile({ sex: 'female' })} />
+        </Row>
+        <Txt variant="label" muted style={{ marginBottom: 6 }}>
           Level
         </Txt>
         <Row style={{ marginBottom: spacing.md }}>

@@ -8,6 +8,7 @@ import { planWorkout, totalSessions } from '../src/lib/planGenerator.ts';
 import { estimateMinutes } from '../src/lib/workout.ts';
 import { MOVES } from '../src/animation/moves.ts';
 import { makeCode, readCode } from '../src/services/syncCode.ts';
+import { encodePacket, decodePacket, toQrParts, QrCollector } from '../src/services/packetCodec.ts';
 import { prepare, sample, timeline, VIEW_W, VIEW_H } from '../src/animation/skeleton.ts';
 
 const errors = [];
@@ -74,6 +75,27 @@ for (const [ip, pin] of [['192.168.1.23', 0], ['10.0.2.15', 65535], ['172.20.10.
   const code = makeCode(ip, pin);
   const back = readCode(code.toLowerCase());
   if (!back || back.ip !== ip || back.pin !== pin) errors.push(`sync code ${code} does not decode back to ${ip}/${pin}`);
+}
+
+// Every exercise needs a realistic demo for both bodies (sprite sheet + thumbnail).
+for (const ex of EXERCISES) {
+  for (const sex of ['male', 'female']) {
+    for (const f of [`assets/humans/${sex}/${ex.id}.webp`, `assets/humans/${sex}/thumbs/${ex.id}.webp`]) {
+      if (!existsSync(new URL(`../${f}`, import.meta.url))) errors.push(`${ex.id}: missing ${f}`);
+    }
+  }
+}
+
+// QR / file packets must survive encoding, splitting into QR parts (scanned in any order) and decoding.
+{
+  const packet = { fithome: 'plan', v: 1, note: 'Ünïcode ✓ नमस्ते', items: Array.from({ length: 300 }, (_, i) => ({ id: `a${i}`, title: `Day ${i}`, reps: i * 3 })) };
+  const text = encodePacket(packet);
+  const parts = toQrParts(text);
+  const col = new QrCollector();
+  let full = null;
+  for (const part of [...parts].reverse()) full = col.add(part) ?? full;
+  if (!full || JSON.stringify(decodePacket(full)) !== JSON.stringify(packet)) errors.push('QR packet did not decode back to the same data');
+  if (JSON.stringify(decodePacket(JSON.stringify(packet))) !== JSON.stringify(packet)) errors.push('plain JSON plan files must still open');
 }
 
 // Personal plans: every combination must give valid workouts of about the chosen length.
