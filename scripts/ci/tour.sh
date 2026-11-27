@@ -7,8 +7,15 @@ OUT=tour
 mkdir -p "$OUT"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
-tap() { for i in 1 2 3 4 5; do python3 "$DIR/tap.py" "$1" && return 0; sleep 1; done; echo "could not find: $1"; return 0; }
+tap() { for i in 1 2 3 4 5; do python3 "$DIR/tap.py" "$1" && return 0; python3 "$DIR/tap.py" "Wait" >/dev/null || true; sleep 1; done; echo "could not find: $1"; return 0; }
 shot() { sleep 2; adb exec-out screencap -p > "$OUT/$1.png"; echo "screenshot $1"; }
+
+# The emulator's home screen app sometimes hangs and its "isn't responding" dialog covers the app.
+# Hide system error dialogs and turn the launcher off: the tour starts the app directly.
+adb shell settings put global hide_error_dialogs 1 || true
+adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher >/dev/null 2>&1 || true
+adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
+python3 "$DIR/tap.py" "Wait" || true
 
 adb shell am force-stop "$PKG"
 adb shell pm clear "$PKG" >/dev/null
