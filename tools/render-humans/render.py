@@ -312,8 +312,8 @@ def pose_frame(move, fr, settle=True):
             ahead = (hx - p['head'][0]) * -f.y + (hy - p['head'][1]) * -f.z
             if math.hypot(hx - p['head'][0], hy - p['head'][1]) < 11 and ahead < 3:
                 up = d3(view, p['neck'], p['head'])
-                orient('upperarm' + side, (lat * sgn * 0.8 + up * 0.55 - f * 0.15).normalized())
-                orient('lowerarm' + side, (-lat * sgn * 0.75 + up * 0.25 - f * 0.6).normalized())
+                orient('upperarm' + side, (lat * sgn * 0.95 + up * 0.2 - f * 0.1).normalized())
+                orient('lowerarm' + side, (-lat * sgn * 0.55 + up * 0.55 - f * 0.55).normalized())
                 orient('hand' + side, (-lat * sgn * 0.6 - f * 0.5 + up * 0.3).normalized())
     # Hands on the floor (push-ups, planks, crawls): palm flat, fingers forward.
     floor2d = max(v[1] for k, v in p.items() if k != 'head')

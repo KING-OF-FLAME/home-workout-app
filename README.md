@@ -42,7 +42,7 @@ See **docs/USER_GUIDE.md** for a step-by-step guide to every feature.
 
 **Exercise demos and body map**
 - Animated demo for every one of the 65 exercises: a figure drawn in code performs the move in a loop, the worked muscles glow, and a cue under it says what to do at each moment (pause and slow motion). No video files, so the template can be resold without licence problems
-- Realistic demos for all 87 exercises: a man or a woman (user's choice) performs each move, rendered in 3D from CC0 MakeHuman bodies, with pause and slow motion
+- Four demo styles for all 91 exercises: 3D body (man or woman, rendered from CC0 MakeHuman bodies), drawn body with glowing muscles, simple figure and real photos, switchable anywhere
 - Muscles view: drawn figure with the worked muscles glowing
 - Real photo demos (start and end position) for 43 exercises
 - "What to expect" timeline on each exercise (general guidance, never promised results)
@@ -303,6 +303,7 @@ scripts/                   Data validation and icon generator
 | `npm run validate-data` | Check exercises and programs |
 | `npm run check` | Both of the above |
 | `npm run icons` | Regenerate placeholder icons from the brand colour |
+| `bash e2e/run.sh <app id> <out dir>` | End-to-end tests ([Maestro](https://maestro.mobile.dev)) for the member and trainer flows on a running emulator; also records captioned tutorial videos |
 
 ---
 

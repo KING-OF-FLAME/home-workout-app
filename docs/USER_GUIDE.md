@@ -12,24 +12,27 @@ The app needs no account and no internet. Everything is stored on the phone.
 
 ## 2. First start
 
-1. Enter your name.
-2. Pick your goal (lose weight, build muscle, get fit, flexibility) and level, and how many days a week you train.
-3. Choose the plan length: **30, 60, 90 or 365 days, or Keep going** (no end date).
-4. Choose minutes per workout (10, 20, 30 or 45), up to 3 focus areas, and whether you have a chair and a wall.
-5. Enter weight and height (used only on the phone for calories and BMI).
-6. The plan summary shows the number of workouts, the phases and week 1. Tap **Start training**.
+1. Enter your name and pick the body for the exercise demos (**Man** or **Woman**).
+2. Set your weight and height (they stay on the phone; used for calories and BMI).
+3. Pick your goal: **Full body fitness, Lose weight, Gain weight & muscle, Build strength & power, Pelvic floor (Kegel)** or **Improve flexibility**.
+4. Pick your level and how many days a week you train.
+5. Choose the plan length: **30, 60, 90 or 365 days, or Keep going** (no end date).
+6. Choose minutes per workout (10, 20, 30 or 45), up to 3 focus areas, and whether you have a chair and a wall. Tap **Build my plan**.
+7. FitHome shows **Building your plan** for a few seconds, then your plan: workouts, phases and week 1.
+8. Don't like an exercise? Tap **Change** next to a day to swap, remove or add exercises. Then tap **Start training**.
 
 ## 3. Daily use
 
 - **Today**: the next workout of your plan ("Day X of N"), your week, streak, quick workouts and coach plans if you have a coach.
 - **Start a workout**: tap the plan card → check the exercises and the muscles they train → **Start workout**.
-- **During the workout**: a realistic man or woman (your choice in onboarding or Profile → Exercise demos show) performs each move, with the main muscles named on top. The line under the figure tells you what to do at that moment. Timed moves count down; for reps tap **Done**. Pause, previous and next are at the bottom. **How to do it** opens the full instructions and pauses the workout.
+- **During the workout**: the demo shows each move in the style you chose (3D body, Drawn, Simple or Photos; switch with the chips under it), with the main muscles named on top. The line under the figure tells you what to do at that moment. Timed moves count down; for reps tap **Done**. Pause, previous and next are at the bottom. **How to do it** opens the full instructions and pauses the workout.
 - **After the workout**: you see the time, calories, the muscles you trained and what they gain. Answer "How did that feel?" and the next workouts adjust.
 
 ## 4. Exercises
 
-- **Workouts → Exercises** lists all 87 exercises with search and filters.
-- Each exercise page has three demo views: **Real body** (realistic man or woman, rendered in 3D), **Muscles** (drawn figure with the worked muscles glowing) and **Photos** (real photos, 43 exercises). Pause and slow motion work on all of them. You also get steps, breathing, common mistakes, muscles worked on a body map, what it improves, and a "what to expect" timeline (general guidance, not a promise).
+- **Workouts → Exercises** lists all 91 exercises with search and filters.
+- Each exercise page has four demo styles: **3D body** (realistic man or woman), **Drawn** (detailed body with the worked muscles glowing), **Simple** (light stick figure) and **Photos** (real photos, 43 exercises). The style you pick is saved and used everywhere (also in Profile → Demo style). Pause and slow motion work on all of them.
+- To change one workout of your plan, open it and tap **Change exercises**. You also get steps, breathing, common mistakes, muscles worked on a body map, what it improves, and a "what to expect" timeline (general guidance, not a promise).
 
 ## 5. Progress and muscles
 

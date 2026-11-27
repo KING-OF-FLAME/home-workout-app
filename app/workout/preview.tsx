@@ -81,6 +81,16 @@ export default function WorkoutPreview() {
         </View>
       </Card>
       <SectionHeader title="Exercises" />
+      {params.kind === 'plan' && day !== undefined ? (
+        <Button
+          title="Change exercises"
+          icon="create-outline"
+          small
+          variant="secondary"
+          style={{ alignSelf: 'flex-start', marginBottom: spacing.sm }}
+          onPress={() => router.push({ pathname: '/plan-edit', params: { day: String(day) } })}
+        />
+      ) : null}
       {workout.items.map((it, i) => {
         const ex = getExercise(it.exerciseId);
         if (!ex) return null;

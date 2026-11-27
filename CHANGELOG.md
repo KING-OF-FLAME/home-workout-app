@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.0 (2026-11-27)
+
+- Four demo styles for every exercise, kept side by side: 3D body (man or woman), Drawn body with glowing muscles, Simple figure (the first animation) and Photos. Switch them on the exercise page and in the workout player; the choice is saved (Profile → Demo style)
+- New onboarding: name and demo body, weight and height, goal, level, plan length, time and focus, then a "Building your plan" step and a ready plan you can change before you start
+- New goals: Build strength & power and Pelvic floor (Kegel); Gain weight & muscle adds an extra set
+- Four pelvic floor exercises with demos (Kegel Hold, Quick Kegels, Bridge with Pelvic Squeeze, Deep Squat Hold) and a 4-week Pelvic Floor Basics program
+- Change any workout of your plan: swap, remove, add or reorder exercises (plan summary or the workout page → Change exercises)
+- Fixed demos that did not match the movement: hands behind the head, floating bodies (cobra, child's pose, floor dips, bicycle crunches, flutter kicks), mountain climbers, plank up-downs, spinal twist, figure four, snow angels, side leg raises, chair hip thrust, russian twists
+- Fixes: the trainer's sharing code now stays the same (re-sharing no longer breaks a student's sync), a slow Accept no longer drops a new student, Save plan / Save meal plan / Assign show what is missing, the assignment dialog can be cancelled and asks before deleting, failed actions show a message, keyboard no longer hides buttons, Sync now works after joining by QR or file, "Allow camera" opens settings after a permanent denial, Next after most of a set counts it, the workout rating can be changed, history rows open on tap, Profile height in inches for imperial
+- Changing your plan asks whether to keep your progress
+- End-to-end tests (Maestro) for the member and trainer flows; each run records captioned tutorial videos
+
 ## 1.3.0 (2026-11-27)
 
 - Realistic exercise demos: every one of the 87 exercises is performed by a realistic man or woman (rendered in 3D from free CC0 MakeHuman bodies). Choose the body in onboarding or in Profile → Exercise demos show. Pause and slow motion work as before.

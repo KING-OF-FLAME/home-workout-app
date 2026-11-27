@@ -104,7 +104,7 @@ export const PROGRAMS: Program[] = [
     title: 'Home Strength',
     subtitle: '6 weeks · 4 days/week',
     description: 'An upper/lower split that builds real strength with your bodyweight. Uses a sturdy chair for a few moves.',
-    level: 3, goals: ['build_muscle'], weeks: 6, icon: 'barbell', color: '#5B8DEF',
+    level: 3, goals: ['strength', 'build_muscle'], weeks: 6, icon: 'barbell', color: '#5B8DEF',
     templates: [
       { title: 'Upper Push', rest: 45, moves: [['arm-circles', 30], ['push-ups', 12, 3], ['pike-push-ups', 8, 3], ['chair-dips', 10, 3], ['diamond-push-ups', 6, 2]] },
       { title: 'Lower Body', rest: 45, moves: [['hip-circles', 30], ['squats', 20, 3], ['bulgarian-split-squats', 8, 3], ['single-leg-bridge', 10, 3], ['calf-raises', 20, 2]] },
@@ -136,6 +136,20 @@ export const PROGRAMS: Program[] = [
       { title: 'Desk Reset', rest: 10, moves: [['neck-rolls', 30], ['arm-circles', 30], ['chest-opener', 30], ['quad-stretch', 30], ['hamstring-stretch', 30]] },
       { title: 'Lower Body Release', rest: 10, moves: [['hip-circles', 30], ['quad-stretch', 30], ['hamstring-stretch', 30], ['figure-four', 30], ['child-pose', 40]] },
       { title: 'Full Body Stretch', rest: 10, moves: [['worlds-greatest-stretch', 30], ['cobra', 30], ['spinal-twist', 30], ['chest-opener', 30], ['child-pose', 45]] },
+    ],
+  }),
+  program({
+    id: 'pelvic-floor',
+    title: 'Pelvic Floor Basics',
+    subtitle: '4 weeks · 5 days/week · 10 minutes',
+    description: 'Kegel holds, quick squeezes and bridges for a stronger pelvic floor and deep core. For men and women. Talk to a doctor first if you are pregnant, recovering from birth or surgery, or have pelvic pain.',
+    level: 1, goals: ['kegel'], weeks: 4, icon: 'fitness', color: '#B07CFF',
+    templates: [
+      { title: 'Learn the squeeze', rest: 15, moves: [['cat-cow', 30], ['kegel-hold', 50], ['kegel-flicks', 30], ['bridge-squeeze', 8], ['child-pose', 40]] },
+      { title: 'Hold & lift', rest: 15, moves: [['hip-circles', 30], ['kegel-hold', 60, 2], ['bridge-squeeze', 10, 2], ['dead-bug', 30], ['deep-squat-hold', 30]] },
+      { title: 'Quick squeezes', rest: 15, moves: [['march-in-place', 30], ['kegel-flicks', 40, 2], ['glute-bridge', 12], ['bird-dog', 30], ['butterfly-stretch', 40]] },
+      { title: 'Strong core', rest: 15, moves: [['cat-cow', 30], ['kegel-hold', 60], ['reverse-crunches', 10], ['fire-hydrants', 10], ['deep-squat-hold', 40]] },
+      { title: 'Relax & reset', rest: 10, moves: [['kegel-flicks', 30], ['kegel-hold', 50], ['bridge-squeeze', 10], ['butterfly-stretch', 40], ['child-pose', 45]] },
     ],
   }),
 ];

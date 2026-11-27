@@ -38,8 +38,8 @@ export const HELP: HelpSection[] = [
     icon: 'body',
     title: 'Exercise pages',
     steps: [
-      'Every exercise is shown by a realistic body, a man or a woman as you chose (change it in Profile → Exercise demos show). Pause and slow motion work on every demo.',
-      'Tap "Muscles" to see the worked muscles glow on a drawn figure, or "Photos" for real photos where available.',
+      'Every exercise has four demo styles: 3D body (a realistic man or woman, as you chose), Drawn (a detailed body with the worked muscles glowing), Simple (a light stick figure) and Photos (real photos, where available). Switch with the chips under the demo, in the workout player too, or set a default in Profile → Demo style.',
+      'Pause and slow motion work on every style. Change the demo body in Profile → Exercise demos show.',
       'You also get step-by-step instructions, breathing, common mistakes, the muscles worked and what to expect over the weeks.',
       'Tap "Read instructions aloud" to hear them.',
     ],

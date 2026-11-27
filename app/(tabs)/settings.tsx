@@ -6,7 +6,8 @@ import { BannerAdSlot } from '@/components/BannerAdSlot';
 import { DEMO_STYLES } from '@/components/ExerciseAnimation';
 import { Card, Chip, Divider, Field, ListRow, Row, Screen, SectionHeader, Stepper, Txt, Button } from '@/components/ui';
 import { AppConfig } from '@/config';
-import type { Goal, Level } from '@/data/types';
+import { GOALS as GOAL_LIST } from '@/data/goals';
+import type { Level } from '@/data/types';
 import { privacyOptionsRequired, showPrivacyOptions } from '@/lib/ads';
 import { planLengthLabel } from '@/lib/planGenerator';
 import { cancelReminders, scheduleDailyReminder } from '@/lib/notifications';
@@ -14,12 +15,7 @@ import { useApp, useColors } from '@/store/AppStore';
 import { friendlyAuthError, useAuth } from '@/store/AuthStore';
 import { spacing } from '@/theme';
 
-const GOALS: { id: Goal; label: string }[] = [
-  { id: 'lose_weight', label: 'Lose weight' },
-  { id: 'build_muscle', label: 'Build muscle' },
-  { id: 'get_fit', label: 'Get fit' },
-  { id: 'flexibility', label: 'Flexibility' },
-];
+const GOALS = GOAL_LIST.map((g) => ({ id: g.id, label: g.short }));
 
 function SwitchRow({ title, subtitle, value, onChange }: { title: string; subtitle?: string; value: boolean; onChange: (v: boolean) => void }) {
   const c = useColors();

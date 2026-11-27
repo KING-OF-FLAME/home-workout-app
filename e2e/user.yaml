@@ -1,0 +1,182 @@
+# End-to-end test and tutorial for a member (student). Every step checks the screen it lands on.
+# Run: maestro test -e APP_ID=com.yourcompany.fithome e2e/user.yaml
+appId: ${APP_ID}
+name: FitHome member tutorial
+---
+- launchApp:
+    clearState: true
+- runScript: { file: caption.js, env: { CAPTION: "Welcome to FitHome. Let's set up your plan." } }
+- extendedWaitUntil: { visible: "Welcome to.*", timeout: 30000 }
+- takeScreenshot: u01-welcome
+- tapOn: "Continue"
+
+# Name and the body shown in every demo
+- runScript: { file: caption.js, env: { CAPTION: "Type your name and pick the body for the exercise demos." } }
+- tapOn: "Your first name"
+- inputText: "Aman"
+- hideKeyboard
+- tapOn: "Man"
+- takeScreenshot: u02-name
+- tapOn: "Continue"
+
+# Weight and height
+- runScript: { file: caption.js, env: { CAPTION: "Set your weight and height. They stay on your phone." } }
+- assertVisible: "About your body"
+- tapOn: { text: "Increase", index: 0 }
+- tapOn: { text: "Increase", index: 0 }
+- takeScreenshot: u03-body
+- tapOn: "Continue"
+
+# Goal
+- runScript: { file: caption.js, env: { CAPTION: "Choose your goal: full body, lose weight, gain muscle, strength, Kegel or flexibility." } }
+- assertVisible: "What is your main goal?"
+- assertVisible: "Pelvic floor \\(Kegel\\)"
+- tapOn: "Lose weight"
+- takeScreenshot: u04-goal
+- tapOn: "Continue"
+
+- runScript: { file: caption.js, env: { CAPTION: "Pick your level and how many days a week you can train." } }
+- tapOn: "Beginner"
+- tapOn: "Continue"
+- runScript: { file: caption.js, env: { CAPTION: "Choose how long your plan runs." } }
+- tapOn: "30 days"
+- tapOn: "Continue"
+- runScript: { file: caption.js, env: { CAPTION: "Set the time per workout and the areas to focus on." } }
+- tapOn: "20 min"
+- tapOn: "Abs"
+- takeScreenshot: u05-focus
+- tapOn: "Build my plan"
+
+# The plan is generated
+- runScript: { file: caption.js, env: { CAPTION: "FitHome builds your plan for you." } }
+- assertVisible: "Building your plan.*"
+- takeScreenshot: u06-generating
+- extendedWaitUntil: { visible: ".*your plan is ready", timeout: 20000 }
+- takeScreenshot: u07-plan-ready
+
+# Change a workout of the plan
+- runScript: { file: caption.js, env: { CAPTION: "Don't like an exercise? Tap Change to swap, remove or add exercises." } }
+- scrollUntilVisible: { element: { text: "Change" }, direction: DOWN, timeout: 20000 }
+- tapOn: { text: "Change", index: 0 }
+- assertVisible: "Edit day 1"
+- takeScreenshot: u08-edit-day
+- tapOn: { text: "Remove", index: 0 }
+- scrollUntilVisible: { element: { text: "Add exercise" }, direction: DOWN, timeout: 20000 }
+- tapOn: "Add exercise"
+- tapOn: "Search exercises"
+- inputText: "Kegel"
+- hideKeyboard
+- tapOn: "Kegel Hold"
+- scrollUntilVisible: { element: { text: "Kegel Hold" }, direction: DOWN, timeout: 20000 }
+- tapOn: "Save changes"
+- scrollUntilVisible: { element: { text: ".*Kegel Hold.*" }, direction: DOWN, timeout: 20000 }
+- takeScreenshot: u09-plan-changed
+- scrollUntilVisible: { element: { text: "Start training" }, direction: DOWN, timeout: 10000 }
+- tapOn: "Start training"
+
+# Today and a real workout
+- runScript: { file: caption.js, env: { CAPTION: "Your workout for today is on the Today tab." } }
+- extendedWaitUntil: { visible: "Start day 1", timeout: 15000 }
+- takeScreenshot: u10-today
+- tapOn: "Start day 1"
+- assertVisible: "Start workout"
+- takeScreenshot: u11-preview
+- tapOn: "Start workout"
+- runScript: { file: caption.js, env: { CAPTION: "The player counts you in, shows the move and talks you through it." } }
+- extendedWaitUntil: { visible: "Go!", timeout: 25000 }
+- takeScreenshot: u12-player-3d
+- runScript: { file: caption.js, env: { CAPTION: "Switch the demo: 3D body, drawn body, simple figure or photos." } }
+- tapOn: "Drawn"
+- takeScreenshot: u13-player-drawn
+- tapOn: "Simple"
+- takeScreenshot: u14-player-simple
+- tapOn: "3D body"
+- runScript: { file: caption.js, env: { CAPTION: "Pause any time, or skip to the next exercise." } }
+- tapOn: "Pause"
+- assertVisible: "Paused. Take your time."
+- tapOn: "Resume"
+- tapOn: "Next"
+- tapOn: "Next"
+- takeScreenshot: u15-player-next
+- runScript: { file: caption.js, env: { CAPTION: "Stop early and save what you did." } }
+- back
+- tapOn: "(?i)save & end"
+- runScript: { file: caption.js, env: { CAPTION: "Your workout is saved with time, calories and muscles worked." } }
+- extendedWaitUntil: { visible: "Duration", timeout: 15000 }
+- tapOn: { text: "Just right", optional: true }
+- takeScreenshot: u16-complete
+- scrollUntilVisible: { element: { text: "Done" }, direction: DOWN, timeout: 10000 }
+- tapOn: "Done"
+
+# Exercise library and demo styles
+- runScript: { file: caption.js, env: { CAPTION: "Every exercise has a demo, steps, common mistakes and the muscles it works." } }
+- tapOn: "Workouts"
+- tapOn: "Exercises"
+- tapOn: "Push-ups"
+- assertVisible: "How to do it"
+- takeScreenshot: u17-exercise-3d
+- tapOn: "Drawn"
+- takeScreenshot: u18-exercise-drawn
+- tapOn: "Photos"
+- takeScreenshot: u19-exercise-photos
+- tapOn: "3D body"
+- tapOn: "Slow motion"
+- tapOn: "Slow motion"
+- back
+- back
+
+# Programs, including pelvic floor
+- runScript: { file: caption.js, env: { CAPTION: "Ready-made programs, including Pelvic Floor Basics for Kegels." } }
+- tapOn: "Kegel"
+- assertVisible: "Pelvic Floor Basics"
+- takeScreenshot: u20-programs-kegel
+- tapOn: "All"
+
+# Build your own workout
+- runScript: { file: caption.js, env: { CAPTION: "Build your own workout and save it." } }
+- scrollUntilVisible: { element: { text: "Create workout" }, direction: DOWN, timeout: 20000 }
+- tapOn: "Create workout"
+- tapOn: "e.g. Monday Upper Body"
+- inputText: "Morning quickie"
+- hideKeyboard
+- tapOn: "Add exercise"
+- tapOn: "Search exercises"
+- inputText: "Squats"
+- hideKeyboard
+- tapOn: "Bodyweight Squats"
+- tapOn: "Save workout"
+- scrollUntilVisible: { element: { text: "Morning quickie" }, direction: DOWN, timeout: 20000 }
+- takeScreenshot: u21-my-workout
+
+# Progress: log weight
+- runScript: { file: caption.js, env: { CAPTION: "Track your workouts, muscles and body weight." } }
+- tapOn: "Progress"
+- scrollUntilVisible: { element: { text: "Log weight" }, direction: DOWN, timeout: 20000 }
+- tapOn: "Log weight"
+- tapOn: { text: "Increase", index: 0 }
+- tapOn: "Save"
+- takeScreenshot: u22-weight-saved
+
+# Profile: demo body and style
+- runScript: { file: caption.js, env: { CAPTION: "In Profile, change the demo body and the demo style any time." } }
+- tapOn: "Profile"
+- tapOn: "Woman"
+- scrollUntilVisible: { element: { text: "Demo style" }, direction: DOWN, timeout: 10000 }
+- tapOn: "Simple"
+- takeScreenshot: u23-profile
+- tapOn: "3D body"
+- tapOn: "Man"
+
+# Coach tab for a member
+- runScript: { file: caption.js, env: { CAPTION: "Got a trainer? Join with their code, scan their QR or open their plan file." } }
+- tapOn: "Coach"
+- scrollUntilVisible: { element: { text: "Scan trainer's QR" }, direction: DOWN, timeout: 20000 }
+- takeScreenshot: u24-coach-member
+- tapOn: "Scan trainer's QR"
+- tapOn: { text: "Allow camera", optional: true }
+- tapOn: { text: "While using the app", optional: true }
+- assertVisible: "Point the camera at the code"
+- takeScreenshot: u25-scan
+- back
+- runScript: { file: caption.js, env: { CAPTION: "That's it. Have a great workout!" } }
+- tapOn: "Today"

@@ -100,7 +100,7 @@ for (const ex of EXERCISES) {
 
 // Personal plans: every combination must give valid workouts of about the chosen length.
 let plans = 0;
-for (const goal of ['lose_weight', 'build_muscle', 'get_fit', 'flexibility'])
+for (const goal of ['lose_weight', 'build_muscle', 'get_fit', 'flexibility', 'strength', 'kegel'])
   for (const level of [1, 2, 3])
     for (const minutes of [10, 20, 30, 45])
       for (const useChair of [true, false])
