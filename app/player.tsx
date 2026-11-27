@@ -2,9 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, BackHandler, Pressable, View } from 'react-native';
+import { Alert, BackHandler, Pressable, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ExerciseThumb } from '@/components/ExerciseThumb';
+import { ExerciseAnimation } from '@/components/ExerciseAnimation';
 import { Button, EmptyState, IconButton, Loading, ProgressBar, Row, Txt } from '@/components/ui';
 import { trainerFeaturesAvailable } from '@/config';
 import { createCoach } from '@/lib/coach';
@@ -24,15 +24,17 @@ export default function Player() {
   useKeepAwake();
   const c = useColors();
   const router = useRouter();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const params = useLocalSearchParams<{ kind: WorkoutSourceKind; id: string; day?: string }>();
   const day = params.day ? Number(params.day) : undefined;
-  const { customWorkouts, settings, profile, programProgress, addSession, completeProgramDay } = useApp();
+  const { customWorkouts, settings, profile, programProgress, myPlan, addSession, completeProgramDay, completePlanSession } = useApp();
   const auth = useAuth();
-  const intensity = params.kind === 'program' ? programProgress[params.id]?.intensity ?? 1 : 1;
+  const intensity =
+    params.kind === 'program' ? programProgress[params.id]?.intensity ?? 1 : params.kind === 'plan' ? myPlan?.intensity ?? 1 : 1;
 
   const [resolved, setResolved] = useState<ResolvedWorkout | null | undefined>(undefined);
   useEffect(() => {
-    resolveWorkout(params.kind, params.id, day, customWorkouts).then(setResolved).catch(() => setResolved(null));
+    resolveWorkout(params.kind, params.id, day, customWorkouts, myPlan).then(setResolved).catch(() => setResolved(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -105,9 +107,11 @@ export default function Player() {
       durationSec,
       calories: Math.round(kcal),
       exercisesDone: new Set([...completedSteps.current].map((i) => steps[i]?.itemIndex)).size,
+      exercises: [...completedSteps.current].map((i) => steps[i]?.exercise?.id).filter((x): x is string => Boolean(x)),
     };
     addSession(session);
     if (!partial && params.kind === 'program' && day !== undefined) completeProgramDay(params.id, day);
+    if (!partial && params.kind === 'plan' && day !== undefined) completePlanSession(day);
     // Share progress with the coach, if this user has one.
     if (trainerFeaturesAvailable && auth.profile) {
       logCompletion({
@@ -272,28 +276,33 @@ export default function Player() {
         <ProgressBar value={index / steps.length} />
       </View>
 
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg }}>
         <Txt variant="label" color={isRest ? c.accent : c.primary}>
           {step.kind === 'ready' ? 'Get ready' : step.kind === 'rest' ? 'Rest' : step.totalSets && step.totalSets > 1 ? `Set ${step.setNumber} of ${step.totalSets}` : 'Go!'}
         </Txt>
         {shown ? (
           <View style={{ marginTop: spacing.lg }}>
-            <ExerciseThumb exercise={shown} size={isRest ? 120 : 170} />
+            <ExerciseAnimation
+              key={shown.id}
+              exercise={shown}
+              width={Math.max(180, Math.min(screenWidth - spacing.lg * 2, (screenHeight - 470) * 1.33, isRest ? 260 : 380))}
+              playing={!paused}
+            />
           </View>
         ) : null}
-        <Txt variant="h1" center style={{ marginTop: spacing.lg, fontSize: isRest ? 22 : 30 }}>
+        <Txt variant="h1" center style={{ marginTop: spacing.md, fontSize: isRest ? 22 : 28 }}>
           {isRest ? (shown ? `Next: ${shown.name}` : 'Almost done') : step.exercise?.name}
         </Txt>
         {step.note && !isRest ? <Txt color={c.primary} center style={{ marginTop: 6 }}>{step.note}</Txt> : null}
 
         {isReps ? (
-          <View style={{ alignItems: 'center', marginTop: spacing.xl }}>
-            <Txt style={{ fontSize: 72, lineHeight: 86, fontWeight: '900' }}>×{step.reps}</Txt>
+          <View style={{ alignItems: 'center', marginTop: spacing.md }}>
+            <Txt style={{ fontSize: 64, lineHeight: 78, fontWeight: '900' }}>×{step.reps}</Txt>
             <Txt muted>{step.exercise?.perSide ? 'reps total, split across both sides' : 'reps'}</Txt>
           </View>
         ) : (
-          <View style={{ alignItems: 'center', marginTop: spacing.xl }}>
-            <Txt style={{ fontSize: 80, lineHeight: 96, fontWeight: '900', fontVariant: ['tabular-nums'] }}>{formatClock(remaining)}</Txt>
+          <View style={{ alignItems: 'center', marginTop: spacing.md }}>
+            <Txt style={{ fontSize: 68, lineHeight: 82, fontWeight: '900', fontVariant: ['tabular-nums'] }}>{formatClock(remaining)}</Txt>
             <View style={{ width: 220, marginTop: spacing.sm }}>
               <ProgressBar value={1 - remaining / Math.max(1, total)} color={isRest ? c.accent : c.primary} />
             </View>
@@ -301,7 +310,7 @@ export default function Player() {
         )}
 
         {!isRest && step.exercise ? (
-          <Pressable onPress={() => showHowTo(step.exercise!.id)} style={{ marginTop: spacing.lg }}>
+          <Pressable onPress={() => showHowTo(step.exercise!.id)} style={{ marginTop: spacing.md }}>
             <Txt variant="small" color={c.textDim} style={{ textDecorationLine: 'underline' }}>How to do it</Txt>
           </Pressable>
         ) : null}

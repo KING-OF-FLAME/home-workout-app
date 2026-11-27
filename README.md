@@ -31,6 +31,20 @@ It has two sides:
 
 ## Features
 
+**Personal plan**
+- Onboarding asks name, goal, level, days per week, plan length (30 / 60 / 90 / 365 days or keep going), minutes per workout, up to 3 focus areas and whether a chair is available
+- Every workout is generated from those answers: warm-up, main block and cool-down, a different session type each day (HIIT, upper, legs, core, mobility, focus days)
+- Progression built in: Foundation, Build and Peak phases, +4% volume a week, harder exercise variants from week 6 and 16, a lighter recovery week every 4th week and a final test week
+- Workouts stay close to the chosen length; "too easy / too hard" feedback adjusts the plan
+- "My plan" screen (week by week, done / next), Today card with Day X of N; change or delete the plan anytime
+
+**Exercise demos and body map**
+- Animated demo for every one of the 65 exercises: a figure drawn in code performs the move in a loop, the worked muscles glow, and a cue under it says what to do at each moment (pause and slow motion). No video files, so the template can be resold without licence problems
+- Real photo demos (start and end position) for 43 exercises, one tap away from the animation
+- "What to expect" timeline on each exercise (general guidance, never promised results)
+- Animated front/back body map on every exercise, on the workout preview, after each workout, and a weekly muscle heat map on Progress
+- Breathing cue, common mistakes and "what it improves" for every exercise
+
 **Workouts**
 - 65 home exercises with step-by-step instructions, muscles worked, difficulty and coach tips (read aloud on request)
 - 6 multi-week programs (Beginner Full Body, Fat Burn HIIT, Abs & Core 21, Home Strength, Glutes & Legs, Daily Mobility) with weekly progression
@@ -227,6 +241,10 @@ Checklist for a new app:
 
 ## Customising content
 
+- **Exercise animations**: `src/animation/moves.ts` describes each move as a few key poses (joint angles), with cues and timing. `npm run validate-data` checks that every exercise has one and that the figure stays in the frame. The figure is drawn by `src/components/ExerciseFigure.tsx`.
+- **Exercise photos**: photos live in `assets/exercises/<exercise-id>-0.jpg` (start) and `-1.jpg` (end), listed in `src/data/exerciseMedia.ts`. Add a pair and a line there to give another exercise a demo. To use your own licensed GIFs or videos instead, replace `ExerciseAnimation` in `src/components/ExerciseAnimation.tsx`.
+- **Muscles and mistakes**: `src/data/muscles.ts` (body regions per exercise, common mistakes, benefits shown on the body map).
+- **Personal plan rules**: `src/lib/planGenerator.ts` (plan lengths, day types per goal, minutes to volume, phases and progression).
 - **Exercises**: `src/data/exercises.ts`. Each has steps, muscles, equipment (`none`, `mat`, `chair`, `wall`), level, mode (`reps` or `time`), defaults and a MET value. To show images or GIFs, set `media` to an image URL.
 - **Programs and quick workouts**: `src/data/programs.ts`. A program is a list of day templates repeated for N weeks with automatic progression.
 - **Meal templates for trainers**: `src/data/mealTemplates.ts`.
@@ -276,6 +294,11 @@ scripts/                   Data validation and icon generator
 | `npm run icons` | Regenerate placeholder icons from the brand colour |
 
 ---
+
+## Credits
+
+- Exercise demo photos: [Free Exercise DB](https://github.com/yuhonas/free-exercise-db), released into the public domain (Unlicense). A copy of the licence is in `assets/exercises/LICENSE-free-exercise-db.md`.
+- Body map: [react-native-body-highlighter](https://www.npmjs.com/package/react-native-body-highlighter) (MIT).
 
 ## FAQ
 

@@ -2,8 +2,10 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { BannerAdSlot } from '@/components/BannerAdSlot';
 import { ExerciseThumb } from '@/components/ExerciseThumb';
+import { MuscleMap, MusclePills } from '@/components/MuscleMap';
 import { Button, Card, EmptyState, ErrorText, Loading, Row, Screen, SectionHeader, Txt } from '@/components/ui';
 import { getExercise } from '@/data/exercises';
+import { loadToIntensity, muscleLoad } from '@/data/muscles';
 import { resolveWorkout } from '@/lib/sources';
 import { useAsync } from '@/lib/useAsync';
 import { equipmentFor, EQUIPMENT_LABEL, estimateCalories, estimateMinutes, itemTarget } from '@/lib/workout';
@@ -15,9 +17,10 @@ export default function WorkoutPreview() {
   const router = useRouter();
   const params = useLocalSearchParams<{ kind: WorkoutSourceKind; id: string; day?: string }>();
   const day = params.day ? Number(params.day) : undefined;
-  const { customWorkouts, profile, programProgress } = useApp();
-  const intensity = params.kind === 'program' ? programProgress[params.id]?.intensity ?? 1 : 1;
-  const { data, loading, error } = useAsync(() => resolveWorkout(params.kind, params.id, day, customWorkouts), [params.kind, params.id, day, customWorkouts]);
+  const { customWorkouts, profile, programProgress, myPlan } = useApp();
+  const intensity =
+    params.kind === 'program' ? programProgress[params.id]?.intensity ?? 1 : params.kind === 'plan' ? myPlan?.intensity ?? 1 : 1;
+  const { data, loading, error } = useAsync(() => resolveWorkout(params.kind, params.id, day, customWorkouts, myPlan), [params.kind, params.id, day, customWorkouts, myPlan]);
 
   if (loading) return <Loading />;
   if (error) return <Screen><ErrorText message={error} /></Screen>;
@@ -63,6 +66,19 @@ export default function WorkoutPreview() {
             ? 'No equipment needed.' + (eq.includes('mat') ? ' A mat or soft floor helps for floor moves.' : '')
             : `You will need: ${eq.map((e) => EQUIPMENT_LABEL[e].toLowerCase()).join(', ')}.`}
         </Txt>
+      </Card>
+      <SectionHeader title="Muscles you'll train" />
+      <Card>
+        <MuscleMap
+          scale={0.55}
+          data={loadToIntensity(muscleLoad(workout.items.filter((it) => it.note !== 'Warm-up' && it.note !== 'Cool-down').map((it) => ({ id: it.exerciseId, sets: it.sets }))))}
+        />
+        <View style={{ marginTop: spacing.md }}>
+          <MusclePills
+            max={6}
+            data={loadToIntensity(muscleLoad(workout.items.filter((it) => it.note !== 'Warm-up' && it.note !== 'Cool-down').map((it) => ({ id: it.exerciseId, sets: it.sets }))))}
+          />
+        </View>
       </Card>
       <SectionHeader title="Exercises" />
       {workout.items.map((it, i) => {

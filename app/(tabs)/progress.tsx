@@ -2,7 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, View } from 'react-native';
 import { BannerAdSlot } from '@/components/BannerAdSlot';
+import { MuscleMap, MusclePills } from '@/components/MuscleMap';
 import { Button, Card, Divider, EmptyState, Row, Screen, SectionHeader, StatTile, Stepper, Txt } from '@/components/ui';
+import { BODY_LABEL, loadToIntensity, muscleLoad, type BodySlug } from '@/data/muscles';
 import { addDays, dayKey, friendlyDate, startOfWeek } from '@/lib/dates';
 import { formatClock } from '@/lib/workout';
 import { useApp, useColors } from '@/store/AppStore';
@@ -34,6 +36,15 @@ export default function Progress() {
   }, [history]);
   const maxMin = Math.max(10, ...weeks.map((w) => w.minutes));
 
+  // Muscles trained in the last 7 days, and big muscles that got nothing.
+  const muscles = useMemo(() => {
+    const since = Date.now() - 7 * 86400000;
+    const ids = history.filter((h) => h.startedAt >= since).flatMap((h) => h.exercises ?? []);
+    const load = muscleLoad(ids.map((id) => ({ id })));
+    const big: BodySlug[] = ['chest', 'upper-back', 'deltoids', 'abs', 'quadriceps', 'gluteal', 'hamstring', 'triceps'];
+    return { data: loadToIntensity(load), missed: big.filter((b) => !load.has(b)) };
+  }, [history]);
+
   // Current month calendar.
   const now = new Date();
   const first = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -58,6 +69,34 @@ export default function Progress() {
         <StatTile icon="flame" label="kcal (est.)" value={stats.totalCalories} color={c.warning} />
         <StatTile icon="trophy" label="Best streak" value={`${stats.bestStreak}d`} color="#B07CFF" />
       </Row>
+
+      <SectionHeader title="Muscles trained this week" />
+      <Card>
+        {muscles.data.length ? (
+          <>
+            <MuscleMap data={muscles.data} scale={0.55} />
+            <View style={{ marginTop: spacing.md }}>
+              <MusclePills data={muscles.data} max={8} />
+            </View>
+            {muscles.missed.length ? (
+              <Txt variant="small" dim center style={{ marginTop: spacing.md }}>
+                Not trained yet this week: {muscles.missed.map((m) => BODY_LABEL[m]).join(', ')}
+              </Txt>
+            ) : (
+              <Txt variant="small" color={c.accent} center style={{ marginTop: spacing.md }}>
+                Every major muscle trained this week. Great balance!
+              </Txt>
+            )}
+          </>
+        ) : (
+          <>
+            <MuscleMap data={[]} scale={0.5} legend={false} animate={false} />
+            <Txt variant="small" dim center style={{ marginTop: spacing.md }}>
+              Finish a workout and the muscles you trained light up here.
+            </Txt>
+          </>
+        )}
+      </Card>
 
       <SectionHeader title="Weekly minutes" />
       <Card>

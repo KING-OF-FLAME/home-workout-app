@@ -3,6 +3,7 @@ import { useColorScheme } from 'react-native';
 import { AppConfig } from '@/config';
 import type { Goal, Level, Workout } from '@/data/types';
 import { dayKey, streaks } from '@/lib/dates';
+import type { MyPlan } from '@/lib/planGenerator';
 import { clearAll, load, loadList, save } from '@/lib/storage';
 import { palettes, type Palette } from '@/theme';
 
@@ -28,7 +29,7 @@ export interface Settings {
   reminderMinute: number;
 }
 
-export type WorkoutSourceKind = 'program' | 'quick' | 'custom' | 'assignment';
+export type WorkoutSourceKind = 'program' | 'quick' | 'custom' | 'assignment' | 'plan';
 
 export interface Session {
   id: string;
@@ -41,6 +42,8 @@ export interface Session {
   calories: number;
   exercisesDone: number;
   feeling?: 'easy' | 'ok' | 'hard';
+  /** Exercise id of every set that was finished, used for the muscle map. */
+  exercises?: string[];
 }
 
 export interface WeightEntry {
@@ -87,6 +90,8 @@ interface AppStoreValue {
   weights: WeightEntry[];
   programProgress: Record<string, ProgramProgress>;
   mealChecks: Record<string, number[]>;
+  /** The personal plan built from onboarding answers. */
+  myPlan: MyPlan | null;
   stats: {
     totalWorkouts: number;
     totalMinutes: number;
@@ -109,6 +114,9 @@ interface AppStoreValue {
   adjustProgramIntensity: (programId: string, feeling: Session['feeling']) => void;
   resetProgram: (programId: string) => void;
   toggleMeal: (key: string, mealIndex: number) => void;
+  setMyPlan: (plan: MyPlan | null) => void;
+  completePlanSession: (session: number) => void;
+  adjustPlanIntensity: (feeling: Session['feeling']) => void;
   resetAllData: () => Promise<void>;
 }
 
@@ -124,10 +132,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [programProgress, setProgramProgress] = useState<Record<string, ProgramProgress>>({});
   const [mealChecks, setMealChecks] = useState<Record<string, number[]>>({});
+  const [myPlan, setMyPlanState] = useState<MyPlan | null>(null);
 
   useEffect(() => {
     (async () => {
-      const [p, s, h, c, w, pp, mc] = await Promise.all([
+      const [p, s, h, c, w, pp, mc, mp] = await Promise.all([
         load('profile', defaultProfile),
         load('settings', defaultSettings),
         loadList<Session>('history'),
@@ -135,6 +144,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         loadList<WeightEntry>('weights'),
         load<Record<string, ProgramProgress>>('programs', {}),
         load<Record<string, number[]>>('meals', {}),
+        load<MyPlan | null>('myPlan', null),
       ]);
       setProfile(p);
       setSettings(s);
@@ -143,6 +153,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       setWeights(w);
       setProgramProgress(pp);
       setMealChecks(mc);
+      setMyPlanState(mp);
       setReady(true);
     })();
   }, []);
@@ -155,6 +166,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (ready) save('weights', weights); }, [weights, ready]);
   useEffect(() => { if (ready) save('programs', programProgress); }, [programProgress, ready]);
   useEffect(() => { if (ready) save('meals', mealChecks); }, [mealChecks, ready]);
+  useEffect(() => { if (ready) save('myPlan', myPlan); }, [myPlan, ready]);
 
   const colors = useMemo(() => {
     const mode = settings.theme === 'system' ? (scheme === 'light' ? 'light' : 'dark') : settings.theme;
@@ -229,6 +241,19 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const setMyPlan = useCallback((plan: MyPlan | null) => setMyPlanState(plan), []);
+  const completePlanSession = useCallback((session: number) => {
+    setMyPlanState((prev) => (prev && !prev.completed.includes(session) ? { ...prev, completed: [...prev.completed, session] } : prev));
+  }, []);
+  const adjustPlanIntensity = useCallback((feeling: Session['feeling']) => {
+    if (!feeling || feeling === 'ok') return;
+    setMyPlanState((prev) => {
+      if (!prev) return prev;
+      const next = feeling === 'easy' ? prev.intensity + 0.1 : prev.intensity - 0.1;
+      return { ...prev, intensity: Math.min(1.6, Math.max(0.6, Math.round(next * 10) / 10)) };
+    });
+  }, []);
+
   const resetAllData = useCallback(async () => {
     await clearAll();
     setProfile(defaultProfile);
@@ -238,13 +263,14 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     setWeights([]);
     setProgramProgress({});
     setMealChecks({});
+    setMyPlanState(null);
   }, []);
 
   const value: AppStoreValue = {
-    ready, colors, profile, settings, history, customWorkouts, weights, programProgress, mealChecks, stats,
+    ready, colors, profile, settings, history, customWorkouts, weights, programProgress, mealChecks, myPlan, stats,
     updateProfile, updateSettings, addSession, setSessionFeeling, deleteSession, saveCustomWorkout,
     deleteCustomWorkout, addWeight, deleteWeight, completeProgramDay, adjustProgramIntensity, resetProgram,
-    toggleMeal, resetAllData,
+    toggleMeal, setMyPlan, completePlanSession, adjustPlanIntensity, resetAllData,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
