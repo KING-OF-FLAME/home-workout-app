@@ -7,9 +7,10 @@ import { BannerAdSlot } from '@/components/BannerAdSlot';
 import { ExerciseAnimation, hasDemo } from '@/components/ExerciseAnimation';
 import { groupLabel } from '@/components/ExerciseThumb';
 import { MuscleMap, MusclePills } from '@/components/MuscleMap';
+import { ResultsTimeline } from '@/components/ResultsTimeline';
 import { Button, Card, Chip, EmptyState, Row, Screen, SectionHeader, Txt } from '@/components/ui';
 import { getExercise } from '@/data/exercises';
-import { BODY_BENEFIT, BODY_LABEL, breathingFor, muscleInfo } from '@/data/muscles';
+import { BODY_BENEFIT, BODY_LABEL, breathingFor, muscleInfo, timelineFor } from '@/data/muscles';
 import { EQUIPMENT_LABEL } from '@/lib/workout';
 import { useColors } from '@/store/AppStore';
 import { muscleColors, spacing } from '@/theme';
@@ -140,6 +141,11 @@ export default function ExerciseDetail() {
           </Txt>
         </Row>
       ))}
+
+      <SectionHeader title="What to expect" />
+      <Card>
+        <ResultsTimeline items={timelineFor(ex.group)} />
+      </Card>
 
       <Button
         title="Read instructions aloud"

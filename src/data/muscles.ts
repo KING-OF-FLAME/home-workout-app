@@ -194,3 +194,83 @@ export function loadToIntensity(load: Map<BodySlug, number>): { slug: BodySlug; 
   const max = Math.max(1, ...load.values());
   return [...load.entries()].map(([slug, v]) => ({ slug, intensity: v / max > 0.66 ? 3 : v / max > 0.33 ? 2 : 1 }));
 }
+
+export interface Milestone {
+  when: string;
+  /** Week the milestone starts, used to show only the ones a plan reaches. */
+  week: number;
+  text: string;
+}
+
+/**
+ * What most people notice over time when they train 3+ times a week.
+ * General guidance only: never promise a result.
+ */
+const TIMELINE: Record<MuscleGroup, Milestone[]> = {
+  chest: [
+    { when: 'Week 1-2', week: 1, text: 'Cleaner form, less soreness after each session.' },
+    { when: 'Week 3-4', week: 3, text: 'More push-up reps: your nerves learn to use the muscle better.' },
+    { when: 'Week 6-8', week: 6, text: 'Chest and arms feel firmer and pushing feels easier.' },
+    { when: 'Week 12+', week: 12, text: 'Many people see a fuller chest and shoulders, with enough protein and sleep.' },
+  ],
+  back: [
+    { when: 'Week 1-2', week: 1, text: 'Less stiffness after sitting, easier to stand tall.' },
+    { when: 'Week 3-4', week: 3, text: 'Better posture holds for longer through the day.' },
+    { when: 'Week 6-8', week: 6, text: 'Back feels stronger when you bend, lift and carry.' },
+    { when: 'Week 12+', week: 12, text: 'More upright posture that others may notice.' },
+  ],
+  shoulders: [
+    { when: 'Week 1-2', week: 1, text: 'Shoulders move more freely.' },
+    { when: 'Week 3-4', week: 3, text: 'Overhead and pushing moves feel steadier.' },
+    { when: 'Week 6-8', week: 6, text: 'Shoulders feel firmer and more stable.' },
+    { when: 'Week 12+', week: 12, text: 'More defined shoulders for many people, with good food and sleep.' },
+  ],
+  arms: [
+    { when: 'Week 1-2', week: 1, text: 'Better control and less wobble in each rep.' },
+    { when: 'Week 3-4', week: 3, text: 'More reps before your arms tire.' },
+    { when: 'Week 6-8', week: 6, text: 'Arms feel firmer, especially the back of the arm.' },
+    { when: 'Week 12+', week: 12, text: 'Visible tone for many people, if body fat comes down too.' },
+  ],
+  core: [
+    { when: 'Week 1-2', week: 1, text: 'You can hold good form for longer.' },
+    { when: 'Week 3-4', week: 3, text: 'Longer planks, steadier balance and posture.' },
+    { when: 'Week 6-8', week: 6, text: 'Core feels tight and strong, back often feels better.' },
+    { when: 'Week 12+', week: 12, text: 'Visible abs depend mostly on body fat, so food matters as much as training.' },
+  ],
+  legs: [
+    { when: 'Week 1-2', week: 1, text: 'Smoother squats and lunges, better balance.' },
+    { when: 'Week 3-4', week: 3, text: 'Stairs and standing up feel easier.' },
+    { when: 'Week 6-8', week: 6, text: 'Legs feel firmer and you can do more reps.' },
+    { when: 'Week 12+', week: 12, text: 'Many people see more shape in their thighs and calves.' },
+  ],
+  glutes: [
+    { when: 'Week 1-2', week: 1, text: 'You learn to feel your glutes working.' },
+    { when: 'Week 3-4', week: 3, text: 'Hips feel stronger and steadier.' },
+    { when: 'Week 6-8', week: 6, text: 'Less knee and back strain, firmer glutes.' },
+    { when: 'Week 12+', week: 12, text: 'Rounder, lifted glutes for many people with steady training.' },
+  ],
+  fullbody: [
+    { when: 'Week 1-2', week: 1, text: 'More energy and better sleep for many people.' },
+    { when: 'Week 3-4', week: 3, text: 'You recover faster and can do more rounds.' },
+    { when: 'Week 6-8', week: 6, text: 'Clothes may start to fit differently if you eat well.' },
+    { when: 'Week 12+', week: 12, text: 'Clear change in fitness and body shape for many people.' },
+  ],
+  cardio: [
+    { when: 'Week 1-2', week: 1, text: 'Less out of breath during warm-ups.' },
+    { when: 'Week 3-4', week: 3, text: 'Stamina improves: you can go longer at the same pace.' },
+    { when: 'Week 6-8', week: 6, text: 'Resting heart rate often drops a little.' },
+    { when: 'Week 12+', week: 12, text: 'Fat loss is easier to see when it is combined with good food.' },
+  ],
+  mobility: [
+    { when: 'Week 1-2', week: 1, text: 'Feels good right away: less stiffness after each session.' },
+    { when: 'Week 3-4', week: 3, text: 'You reach further and move more freely.' },
+    { when: 'Week 6-8', week: 6, text: 'Daily movements feel easier, fewer aches from sitting.' },
+    { when: 'Week 12+', week: 12, text: 'Lasting flexibility that stays with regular practice.' },
+  ],
+};
+
+export function timelineFor(group: MuscleGroup): Milestone[] {
+  return TIMELINE[group];
+}
+
+export const RESULTS_NOTE = 'Everyone is different. Results depend on how often you train, what you eat, sleep and where you start.';

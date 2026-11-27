@@ -3,9 +3,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, Switch, View } from 'react-native';
 import { MuscleMap } from '@/components/MuscleMap';
+import { ResultsTimeline } from '@/components/ResultsTimeline';
 import { Button, Card, Chip, Field, Row, Screen, Spacer, Stepper, Txt, type IconName } from '@/components/ui';
 import { AppConfig } from '@/config';
-import type { BodySlug } from '@/data/muscles';
+import { timelineFor, type BodySlug } from '@/data/muscles';
 import type { Goal, Level } from '@/data/types';
 import { uid } from '@/lib/id';
 import {
@@ -340,6 +341,13 @@ function PlanSummary({ plan, name }: { plan: MyPlan; name: string }) {
           </Row>
         ))}
       </Row>
+
+      <Txt variant="h3" style={{ marginTop: spacing.lg, marginBottom: spacing.sm }}>What to expect</Txt>
+      <ResultsTimeline
+        items={timelineFor(plan.goal === 'flexibility' ? 'mobility' : 'fullbody').filter(
+          (m) => !Number.isFinite(weeks) || m.week <= weeks,
+        )}
+      />
 
       <Txt variant="h3" style={{ marginTop: spacing.lg }}>Week 1</Txt>
       {firstWeek.map((w, i) => (
