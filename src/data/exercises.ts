@@ -222,6 +222,18 @@ export const EXERCISES: Exercise[] = [
   { id: 'chair-hip-thrust', name: 'Chair Hip Thrust', group: 'glutes', muscles: ['Glutes', 'Hamstrings'], equipment: 'chair', level: 2, mode: 'reps', defaultReps: 12, met: 3.5,
     steps: ['Sit on the floor with your upper back against the edge of a sturdy chair.', 'Drive through your heels to lift your hips until your body is level.', 'Squeeze at the top, then lower slowly.'],
     tip: 'Push the chair against a wall so it cannot slide.' },
+  // Pelvic floor (Kegel) exercises: part of the deep core.
+  { id: 'kegel-hold', name: 'Kegel Hold', group: 'core', muscles: ['Pelvic floor', 'Deep core'], equipment: 'mat', level: 1, mode: 'time', defaultSeconds: 60, met: 1.5,
+    steps: ['Lie on your back, knees bent, hands on your belly.', 'Squeeze the muscles you use to stop peeing and lift them up and in. Hold 5 seconds.', 'Let go completely for 5 seconds. Keep breathing; do not squeeze your glutes or thighs.'],
+    tip: 'Empty your bladder first. Never practise by stopping your pee midstream.' },
+  { id: 'kegel-flicks', name: 'Quick Kegels', group: 'core', muscles: ['Pelvic floor'], equipment: 'mat', level: 1, mode: 'time', defaultSeconds: 40, met: 1.5,
+    steps: ['Lie on your back, knees bent.', 'Squeeze the pelvic floor hard and fast for one second.', 'Let go fully, then repeat at a steady rhythm.'],
+    tip: 'Fast squeezes help stop leaks when you cough, sneeze or jump.' },
+  { id: 'bridge-squeeze', name: 'Bridge with Pelvic Squeeze', group: 'core', muscles: ['Pelvic floor', 'Glutes'], equipment: 'mat', level: 1, mode: 'reps', defaultReps: 10, met: 3,
+    steps: ['Lie on your back, knees bent, feet flat.', 'Lift your hips and squeeze the pelvic floor at the top. Hold 3 seconds.', 'Lower slowly and relax the pelvic floor.'] },
+  { id: 'deep-squat-hold', name: 'Deep Squat Hold', group: 'mobility', muscles: ['Pelvic floor', 'Hips'], equipment: 'none', level: 1, mode: 'time', defaultSeconds: 40, met: 2,
+    steps: ['Stand with feet wider than hips, toes turned out.', 'Sink into a deep squat, elbows inside the knees, chest up.', 'Breathe slowly into the belly and let the pelvic floor relax.'],
+    tip: 'Hold onto a door frame if your heels lift.' },
 ];
 
 export const EXERCISE_MAP: Record<string, Exercise> = Object.fromEntries(EXERCISES.map((e) => [e.id, e]));

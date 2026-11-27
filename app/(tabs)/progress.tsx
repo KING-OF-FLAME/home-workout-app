@@ -8,7 +8,7 @@ import { Button, Card, Divider, EmptyState, Row, Screen, SectionHeader, StatTile
 import { BODY_LABEL, loadToIntensity, muscleLoad, type BodySlug } from '@/data/muscles';
 import { addDays, dayKey, friendlyDate, startOfWeek } from '@/lib/dates';
 import { formatClock } from '@/lib/workout';
-import { useApp, useColors } from '@/store/AppStore';
+import { useApp, useColors, type Session } from '@/store/AppStore';
 import { radius, spacing } from '@/theme';
 
 function bmiInfo(kg: number, cm: number): { bmi: number; label: string } {
@@ -25,6 +25,31 @@ export default function Progress() {
   const imperial = settings.units === 'imperial';
   const [draft, setDraft] = useState(profile.weightKg);
   const fmtW = (kg: number) => (imperial ? `${Math.round(kg * 2.2046)} lb` : `${Math.round(kg * 10) / 10} kg`);
+
+  const confirmDelete = (h: Session) =>
+    Alert.alert(
+      'Delete this workout?',
+      h.title,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteSession(h.id) },
+      ],
+      { cancelable: true },
+    );
+
+  const sessionDetails = (h: Session) => {
+    const when = new Date(h.startedAt).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const feeling = h.feeling ? `\nFelt: ${h.feeling === 'easy' ? 'Easy' : h.feeling === 'hard' ? 'Hard' : 'Good'}` : '';
+    Alert.alert(
+      h.title,
+      `${when}\nTime: ${formatClock(h.durationSec)}\nExercises: ${h.exercisesDone}\nCalories: about ${Math.round(h.calories)} kcal${feeling}`,
+      [
+        { text: 'Close', style: 'cancel' },
+        { text: 'Delete…', style: 'destructive', onPress: () => confirmDelete(h) },
+      ],
+      { cancelable: true },
+    );
+  };
 
   // Minutes per week for the last 8 weeks.
   const weeks = useMemo(() => {
@@ -208,12 +233,10 @@ export default function Progress() {
             <View key={h.id}>
               {i > 0 ? <Divider /> : null}
               <Pressable
-                onLongPress={() =>
-                  Alert.alert('Delete this workout?', h.title, [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Delete', style: 'destructive', onPress: () => deleteSession(h.id) },
-                  ])
-                }
+                onPress={() => sessionDetails(h)}
+                onLongPress={() => confirmDelete(h)}
+                accessibilityRole="button"
+                accessibilityHint="Shows details. You can delete it from there."
                 style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, gap: spacing.md }}
               >
                 <View style={{ width: 38, height: 38, borderRadius: radius.md, backgroundColor: c.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
@@ -235,7 +258,7 @@ export default function Progress() {
       )}
       {history.length > 0 ? (
         <Txt variant="caption" muted center style={{ marginTop: spacing.sm }}>
-          Long-press a workout to delete it. Calories are estimates.
+          Tap a workout to see details or delete it. Calories are estimates.
         </Txt>
       ) : null}
 

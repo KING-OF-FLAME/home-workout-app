@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import * as Speech from 'expo-speech';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { BannerAdSlot } from '@/components/BannerAdSlot';
-import { ExerciseAnimation, type DemoMode, hasDemo } from '@/components/ExerciseAnimation';
+import { DemoStyleSwitch, ExerciseAnimation, hasDemo } from '@/components/ExerciseAnimation';
 import { groupLabel } from '@/components/ExerciseThumb';
 import { MuscleMap, MusclePills } from '@/components/MuscleMap';
 import { ResultsTimeline } from '@/components/ResultsTimeline';
@@ -12,40 +12,37 @@ import { Button, Card, Chip, EmptyState, Row, Screen, SectionHeader, Txt } from 
 import { getExercise } from '@/data/exercises';
 import { BODY_BENEFIT, BODY_LABEL, breathingFor, muscleInfo, timelineFor } from '@/data/muscles';
 import { EQUIPMENT_LABEL } from '@/lib/workout';
-import { useColors } from '@/store/AppStore';
+import { useApp, useColors } from '@/store/AppStore';
 import { muscleColors, spacing } from '@/theme';
 
 const LEVEL = ['', 'Beginner', 'Intermediate', 'Advanced'];
 
 export default function ExerciseDetail() {
   const c = useColors();
+  const { settings } = useApp();
   const { width } = useWindowDimensions();
   const { id, fromPlayer } = useLocalSearchParams<{ id: string; fromPlayer?: string }>();
   const [playing, setPlaying] = useState(true);
   const [slow, setSlow] = useState(false);
-  const [mode, setMode] = useState<DemoMode>('body');
+  // Stop reading the steps aloud when leaving the screen.
+  useEffect(() => () => { Speech.stop(); }, []);
   const ex = getExercise(id);
   if (!ex) return <EmptyState icon="alert-circle" title="Exercise not found" />;
   const info = muscleInfo(ex);
   const map = [...info.primary.map((slug) => ({ slug, intensity: 3 })), ...info.secondary.map((slug) => ({ slug, intensity: 1 }))];
-  const demo = hasDemo(ex.id);
   const breathing = breathingFor(ex);
 
   return (
     <Screen edges={['bottom']}>
       <Stack.Screen options={{ title: ex.name }} />
       <View style={{ alignItems: 'center', paddingTop: spacing.sm }}>
-        <ExerciseAnimation exercise={ex} width={width - spacing.lg * 2} playing={playing} speed={slow ? 0.45 : 1} mode={mode} />
+        <ExerciseAnimation exercise={ex} width={width - spacing.lg * 2} playing={playing} speed={slow ? 0.45 : 1} />
       </View>
       <Row style={{ justifyContent: 'center', marginTop: spacing.sm, flexWrap: 'wrap' }}>
         <Chip icon={playing ? 'pause' : 'play'} label={playing ? 'Pause' : 'Play'} onPress={() => setPlaying((p) => !p)} />
         <Chip icon="speedometer-outline" label="Slow motion" active={slow} onPress={() => setSlow((s) => !s)} />
       </Row>
-      <Row style={{ justifyContent: 'center', marginTop: 4, flexWrap: 'wrap' }}>
-        <Chip icon="person" label="Real body" active={mode === 'body'} onPress={() => setMode('body')} />
-        <Chip icon="flame-outline" label="Muscles" active={mode === 'muscles'} onPress={() => setMode('muscles')} />
-        {demo ? <Chip icon="image-outline" label="Photos" active={mode === 'photo'} onPress={() => setMode('photo')} /> : null}
-      </Row>
+      <DemoStyleSwitch exerciseId={ex.id} />
 
       <Txt variant="h1" center style={{ marginTop: spacing.md }}>
         {ex.name}
@@ -161,7 +158,7 @@ export default function ExerciseDetail() {
           Speech.speak(`${ex.name}. ${ex.steps.join(' ')} ${breathing} ${ex.tip ?? ''}`);
         }}
       />
-      {demo && mode === 'photo' ? (
+      {hasDemo(ex.id) && settings.demoStyle === 'photo' ? (
         <Txt variant="caption" muted center style={{ marginTop: spacing.md }}>
           Demo photos: Free Exercise DB (public domain)
         </Txt>

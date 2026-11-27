@@ -2,9 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, BackHandler, Pressable, useWindowDimensions, View } from 'react-native';
+import { Alert, BackHandler, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ExerciseAnimation } from '@/components/ExerciseAnimation';
+import { DemoStyleSwitch, ExerciseAnimation } from '@/components/ExerciseAnimation';
 import { Button, EmptyState, IconButton, Loading, ProgressBar, Row, Txt } from '@/components/ui';
 import { trainerFeaturesAvailable } from '@/config';
 import { createCoach } from '@/lib/coach';
@@ -133,7 +133,14 @@ export default function Player() {
   /** Move to step i. `completed` is true when the current step ended naturally (timer or Done). */
   const goTo = useCallback(
     (i: number, completed = false) => {
-      if (completed && steps[indexRef.current]?.kind === 'exercise') completedSteps.current.add(indexRef.current);
+      const cur = steps[indexRef.current];
+      if (cur?.kind === 'exercise' && i > indexRef.current && !completed && !pausedRef.current) {
+        // Tapping Next after doing most of the set still counts it: half the time, or 5 s of reps.
+        const spent = (exerciseSeconds.current[indexRef.current] ?? 0) + (Date.now() - stepStartedAt.current) / 1000;
+        const needed = cur.exercise?.mode === 'reps' ? 5 : (cur.seconds ?? 30) * 0.5;
+        if (spent >= needed) completed = true;
+      }
+      if (completed && cur?.kind === 'exercise') completedSteps.current.add(indexRef.current);
       if (i >= steps.length) return finishRef.current(false);
       recordStepTime();
       const target = Math.max(0, i);
@@ -276,7 +283,7 @@ export default function Player() {
         <ProgressBar value={index / steps.length} />
       </View>
 
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg }} showsVerticalScrollIndicator={false}>
         <Txt variant="label" color={isRest ? c.accent : c.primary}>
           {step.kind === 'ready' ? 'Get ready' : step.kind === 'rest' ? 'Rest' : step.totalSets && step.totalSets > 1 ? `Set ${step.setNumber} of ${step.totalSets}` : 'Go!'}
         </Txt>
@@ -285,9 +292,10 @@ export default function Player() {
             <ExerciseAnimation
               key={shown.id}
               exercise={shown}
-              width={Math.max(180, Math.min(screenWidth - spacing.lg * 2, (screenHeight - 470) * 1.33, isRest ? 260 : 380))}
+              width={Math.max(180, Math.min(screenWidth - spacing.lg * 2, (screenHeight - 520) * 1.33, isRest ? 260 : 380))}
               playing={!paused}
             />
+            {!isRest ? <DemoStyleSwitch exerciseId={shown.id} compact /> : null}
           </View>
         ) : null}
         <Txt variant="h1" center style={{ marginTop: spacing.md, fontSize: isRest ? 22 : 28 }}>
@@ -314,7 +322,7 @@ export default function Player() {
             <Txt variant="small" color={c.textDim} style={{ textDecorationLine: 'underline' }}>How to do it</Txt>
           </Pressable>
         ) : null}
-      </View>
+      </ScrollView>
 
       <View style={{ padding: spacing.lg, gap: spacing.md }}>
         {isReps ? (

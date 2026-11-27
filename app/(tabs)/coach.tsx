@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { BannerAdSlot } from '@/components/BannerAdSlot';
 import { Button, Card, Divider, EmptyState, ErrorText, Field, ListRow, Loading, Row, Screen, SectionHeader, StatTile, Txt } from '@/components/ui';
@@ -24,6 +24,26 @@ import {
 import { useColors } from '@/store/AppStore';
 import { friendlyAuthError, useAuth } from '@/store/AuthStore';
 import { spacing } from '@/theme';
+
+/** Runs one dialog action at a time and shows an alert when it fails. */
+function useAction() {
+  const [busy, setBusy] = useState(false);
+  const running = useRef(false);
+  const run = useCallback(async (failTitle: string, fn: () => Promise<void>) => {
+    if (running.current) return;
+    running.current = true;
+    setBusy(true);
+    try {
+      await fn();
+    } catch (e) {
+      Alert.alert(failTitle, friendlyAuthError(e));
+    } finally {
+      running.current = false;
+      setBusy(false);
+    }
+  }, []);
+  return { busy, run };
+}
 
 export default function Coach() {
   const auth = useAuth();
@@ -123,6 +143,7 @@ function TrainerDashboard() {
   const [students, setStudents] = useState<RosterEntry[] | null>(null);
   const [counts, setCounts] = useState({ plans: 0, meals: 0 });
   const [error, setError] = useState<string | null>(null);
+  const action = useAction();
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -226,11 +247,25 @@ function TrainerDashboard() {
           title="Use this phone as a member instead"
           variant="ghost"
           style={{ marginTop: spacing.xl }}
+          loading={action.busy}
           onPress={() =>
-            Alert.alert('Switch to member?', 'Your students and plans stay saved on this phone. Switch back anytime.', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Switch', onPress: async () => { if (profile) { await updateUserDoc(profile.uid, { role: 'member' }); await refresh(); } } },
-            ])
+            Alert.alert(
+              'Switch to member?',
+              'Your students and plans stay saved on this phone. Switch back anytime.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Switch',
+                  onPress: () =>
+                    action.run('Could not switch', async () => {
+                      if (!profile) return;
+                      await updateUserDoc(profile.uid, { role: 'member' });
+                      await refresh();
+                    }),
+                },
+              ],
+              { cancelable: true },
+            )
           }
         />
       ) : null}
@@ -288,14 +323,32 @@ function OfflineStudentView() {
   const [link, setLink] = useState<CoachLink | null>(null);
   const [assignments, setAssignments] = useState<Assignment[] | null>(null);
   const [editingCode, setEditingCode] = useState(false);
+  const action = useAction();
 
   const load = useCallback(async () => {
     if (!profile) return;
-    setLink(await getCoachLink());
-    setAssignments(profile.trainerId ? await listMyAssignments(profile.uid) : []);
+    try {
+      setLink(await getCoachLink());
+      setAssignments(profile.trainerId ? await listMyAssignments(profile.uid) : []);
+    } catch (e) {
+      setError(friendlyAuthError(e));
+      setAssignments((cur) => cur ?? []);
+    }
   }, [profile]);
   useFocusEffect(useCallback(() => { load(); }, [load]));
-  useEffect(() => { if (link) setCode(link.code); }, [link]);
+  // Plans that came by QR or file have no Wi-Fi code ('OFFLINE'): open the
+  // code box instead of filling it with something that cannot sync.
+  const noWifiCode = link?.code === 'OFFLINE';
+  const linkCode = link?.code;
+  useEffect(() => {
+    if (!linkCode) return;
+    if (linkCode === 'OFFLINE') {
+      setCode('');
+      setEditingCode(true);
+    } else {
+      setCode(linkCode);
+    }
+  }, [linkCode]);
 
   const sync = async (useCode: string) => {
     if (!profile) return;
@@ -316,18 +369,33 @@ function OfflineStudentView() {
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not sync.');
-      await refresh();
+      await refresh().catch(() => undefined);
       await load();
     } finally {
       setBusy(false);
     }
   };
 
-  const becomeTrainer = () =>
-    Alert.alert('Use this phone as a trainer?', 'You will be able to add students and assign plans. Switch back anytime.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Switch', onPress: async () => { if (profile) { await updateUserDoc(profile.uid, { role: 'trainer' }); await refresh(); } } },
-    ]);
+  const becomeTrainer = () => {
+    if (action.busy) return;
+    Alert.alert(
+      'Use this phone as a trainer?',
+      'You will be able to add students and assign plans. Switch back anytime.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Switch',
+          onPress: () =>
+            action.run('Could not switch', async () => {
+              if (!profile) return;
+              await updateUserDoc(profile.uid, { role: 'trainer' });
+              await refresh();
+            }),
+        },
+      ],
+      { cancelable: true },
+    );
+  };
 
   if (!profile) return <Loading />;
 
@@ -392,6 +460,11 @@ function OfflineStudentView() {
             style={{ fontSize: 18, letterSpacing: 2, textAlign: 'center', fontWeight: '800', marginTop: spacing.md }}
           />
         ) : null}
+        {noWifiCode && editingCode ? (
+          <Txt variant="small" dim>
+            Wi-Fi sync needs your trainer's sharing code. QR and file still work.
+          </Txt>
+        ) : null}
         <Row style={{ marginTop: spacing.md }}>
           <Button title="Sync now" icon="sync" small loading={busy} onPress={() => sync(code)} disabled={code.replace(/[^0-9A-Z]/gi, '').length < 10} style={{ flex: 1 }} />
           <Button title={editingCode ? 'Cancel' : 'New code'} small variant="secondary" onPress={() => setEditingCode((v) => !v)} style={{ flex: 1 }} />
@@ -442,20 +515,27 @@ function OfflineStudentView() {
         title="Remove this coach"
         variant="ghost"
         style={{ marginTop: spacing.xl }}
+        loading={action.busy}
         onPress={() =>
-          Alert.alert('Remove your coach?', 'Their plans will be removed from this phone. You can join again with a new code.', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Remove',
-              style: 'destructive',
-              onPress: async () => {
-                await unlinkTrainer(profile);
-                cancelCoachSyncReminder().catch(() => undefined);
-                await refresh();
-                await load();
+          Alert.alert(
+            'Remove your coach?',
+            'Their plans will be removed from this phone. You can join again with a new code.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Remove',
+                style: 'destructive',
+                onPress: () =>
+                  action.run('Could not remove your coach', async () => {
+                    await unlinkTrainer(profile);
+                    cancelCoachSyncReminder().catch(() => undefined);
+                    await refresh();
+                    await load();
+                  }),
               },
-            },
-          ])
+            ],
+            { cancelable: true },
+          )
         }
       />
     </Screen>
@@ -470,6 +550,7 @@ function CloudStudentView() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [assignments, setAssignments] = useState<Assignment[] | null>(null);
+  const action = useAction();
 
   const load = useCallback(async () => {
     if (!profile?.trainerId) return setAssignments([]);
@@ -506,19 +587,27 @@ function CloudStudentView() {
     }
   };
 
-  const becomeTrainer = () =>
-    Alert.alert('Switch to a trainer account?', 'You will be able to add students and assign plans.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Switch',
-        onPress: async () => {
-          if (!profile) return;
-          if (profile.trainerId) await leaveTrainer(profile);
-          await updateUserDoc(profile.uid, { role: 'trainer' });
-          await refresh();
+  const becomeTrainer = () => {
+    if (action.busy) return;
+    Alert.alert(
+      'Switch to a trainer account?',
+      'You will be able to add students and assign plans.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Switch',
+          onPress: () =>
+            action.run('Could not switch', async () => {
+              if (!profile) return;
+              if (profile.trainerId) await leaveTrainer(profile);
+              await updateUserDoc(profile.uid, { role: 'trainer' });
+              await refresh();
+            }),
         },
-      },
-    ]);
+      ],
+      { cancelable: true },
+    );
+  };
 
   if (!profile?.trainerId) {
     return (
@@ -596,11 +685,25 @@ function CloudStudentView() {
         title="Leave this coach"
         variant="ghost"
         style={{ marginTop: spacing.xl }}
+        loading={action.busy}
         onPress={() =>
-          Alert.alert('Leave your coach?', 'Your coach will no longer see your progress.', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Leave', style: 'destructive', onPress: async () => { await leaveTrainer(profile); await refresh(); } },
-          ])
+          Alert.alert(
+            'Leave your coach?',
+            'Your coach will no longer see your progress.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Leave',
+                style: 'destructive',
+                onPress: () =>
+                  action.run('Could not leave', async () => {
+                    await leaveTrainer(profile);
+                    await refresh();
+                  }),
+              },
+            ],
+            { cancelable: true },
+          )
         }
       />
     </Screen>

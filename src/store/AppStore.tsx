@@ -30,7 +30,11 @@ export interface Settings {
   reminderEnabled: boolean;
   reminderHour: number;
   reminderMinute: number;
+  /** How exercise demos are drawn: 3D body, drawn body, simple figure or photos. */
+  demoStyle: DemoStyle;
 }
+
+export type DemoStyle = '3d' | 'drawn' | 'simple' | 'photo';
 
 export type WorkoutSourceKind = 'program' | 'quick' | 'custom' | 'assignment' | 'plan';
 
@@ -82,6 +86,7 @@ const defaultSettings: Settings = {
   reminderEnabled: false,
   reminderHour: AppConfig.defaults.reminderHour,
   reminderMinute: AppConfig.defaults.reminderMinute,
+  demoStyle: '3d',
 };
 
 interface AppStoreValue {
@@ -150,8 +155,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         load<Record<string, number[]>>('meals', {}),
         load<MyPlan | null>('myPlan', null),
       ]);
-      setProfile(p);
-      setSettings(s);
+      setProfile({ ...defaultProfile, ...p });
+      setSettings({ ...defaultSettings, ...s });
       setHistory(h);
       setCustomWorkouts(c);
       setWeights(w);

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 import { Button, EmptyState, ErrorText, Field, IconButton, Loading, Row, Screen, SectionHeader, Txt } from '@/components/ui';
 import { addDays, dayKey } from '@/lib/dates';
@@ -31,34 +31,56 @@ export default function AssignPlan() {
   const [error, setError] = useState<string | null>(null);
   const isWorkout = type !== 'meal';
 
-  useEffect(() => {
-    if (!profile) return;
-    Promise.all([getRosterEntry(profile.uid, studentId), isWorkout ? listWorkoutPlans(profile.uid) : listMealPlans(profile.uid)])
-      .then(([s, p]) => {
-        setStudent(s);
-        setPlans(p);
-      })
-      .catch((e) => {
-        setError(friendlyAuthError(e));
-        setPlans([]);
-      });
-  }, [profile, studentId, isWorkout]);
+  const knownIds = useRef<Set<string> | null>(null);
+
+  // Reload on focus, so a plan made with "Create new" shows up on return.
+  useFocusEffect(
+    useCallback(() => {
+      if (!profile) return;
+      let live = true;
+      Promise.all([getRosterEntry(profile.uid, studentId), isWorkout ? listWorkoutPlans(profile.uid) : listMealPlans(profile.uid)])
+        .then(([s, p]) => {
+          if (!live) return;
+          setStudent(s);
+          setPlans(p);
+          // Pick the plan that was just created.
+          const before = knownIds.current;
+          const added = before ? p.filter((x) => !before.has(x.id)) : [];
+          if (added.length === 1) setSelected(added[0].id);
+          else setSelected((cur) => (cur && p.some((x) => x.id === cur) ? cur : null));
+          knownIds.current = new Set(p.map((x) => x.id));
+        })
+        .catch((e) => {
+          if (!live) return;
+          setError(friendlyAuthError(e));
+          setPlans((cur) => cur ?? []);
+        });
+      return () => {
+        live = false;
+      };
+    }, [profile, studentId, isWorkout]),
+  );
 
   const startDate = dayKey(addDays(new Date(), offset));
 
   const assign = async () => {
+    if (busy) return;
     const plan = plans?.find((p) => p.id === selected);
-    if (!profile || !student || !plan) return;
+    if (!profile) return;
+    if (!student) return Alert.alert('Student not found', 'They may have left your team.');
+    if (!plan) return Alert.alert('Choose a plan', 'Tap a plan in the list first.');
     setBusy(true);
     setError(null);
     try {
       await assignPlan({ trainer: profile, student, type: isWorkout ? 'workout' : 'meal', plan, startDate, note: note.trim() });
+      setBusy(false);
       Alert.alert('Assigned', `${plan.name} was sent to ${student.name}.`);
       router.back();
     } catch (e) {
-      setError(friendlyAuthError(e));
-    } finally {
+      const msg = friendlyAuthError(e);
+      setError(msg);
       setBusy(false);
+      Alert.alert('Could not assign the plan', msg);
     }
   };
 
@@ -69,7 +91,7 @@ export default function AssignPlan() {
       edges={['bottom']}
       footer={
         <View style={{ padding: spacing.lg, borderTopWidth: 1, borderTopColor: c.border }}>
-          <Button title={`Assign to ${student?.name ?? 'student'}`} icon="send" onPress={assign} loading={busy} disabled={!selected || !student} />
+          <Button title={`Assign to ${student?.name ?? 'student'}`} icon="send" onPress={assign} loading={busy} disabled={plans.length === 0} />
         </View>
       }
     >

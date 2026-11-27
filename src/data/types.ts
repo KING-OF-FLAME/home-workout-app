@@ -54,7 +54,7 @@ export interface Workout {
   restBetweenExercises?: number;
 }
 
-export type Goal = 'lose_weight' | 'build_muscle' | 'get_fit' | 'flexibility';
+export type Goal = 'lose_weight' | 'build_muscle' | 'get_fit' | 'flexibility' | 'strength' | 'kegel';
 
 export interface Program {
   id: string;

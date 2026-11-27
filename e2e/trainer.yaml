@@ -1,0 +1,99 @@
+# End-to-end test and tutorial for a trainer. Runs after user.yaml on the same phone.
+# A test student (scripts/ci/sync_test.py, started through e2e/server.py) joins over Wi-Fi.
+appId: ${APP_ID}
+name: FitHome trainer tutorial
+---
+- launchApp
+- runScript: { file: caption.js, env: { CAPTION: "FitHome for trainers: plans, meals and students, with no server." } }
+- tapOn: "Coach"
+- scrollUntilVisible: { element: { text: "I am a trainer" }, direction: DOWN, timeout: 20000 }
+- runScript: { file: caption.js, env: { CAPTION: "Turn this phone into the trainer's phone." } }
+- tapOn: "I am a trainer"
+- tapOn: "(?i)switch"
+- extendedWaitUntil: { visible: "Share & sync with students", timeout: 15000 }
+- takeScreenshot: t01-trainer-home
+
+# Workout plan
+- runScript: { file: caption.js, env: { CAPTION: "Create a workout plan. Start from a template or add days and exercises." } }
+- tapOn: "Build multi-day plans"
+- tapOn: "New"
+- tapOn: "e.g. 4-week fat loss"
+- inputText: "Aman strength"
+- hideKeyboard
+- tapOn: "Start from a template"
+- tapOn: "Home Strength"
+- takeScreenshot: t02-plan-edit
+- tapOn: "Save plan"
+- extendedWaitUntil: { visible: "Aman strength", timeout: 15000 }
+- takeScreenshot: t03-plans
+- back
+
+# Meal plan
+- runScript: { file: caption.js, env: { CAPTION: "Create a meal plan with meals, times and calories." } }
+- tapOn: "Meals, calories and macros"
+- tapOn: "New"
+- tapOn: "e.g. Fat loss 1600 kcal"
+- inputText: "Lean 1800"
+- hideKeyboard
+- tapOn: "Meal name"
+- inputText: "Breakfast"
+- hideKeyboard
+- tapOn: "Foods and portions"
+- inputText: "Oats, banana, milk"
+- hideKeyboard
+- takeScreenshot: t04-meal-edit
+- scrollUntilVisible: { element: { text: "Save meal plan" }, direction: DOWN, timeout: 10000 }
+- tapOn: "Save meal plan"
+- extendedWaitUntil: { visible: "Lean 1800", timeout: 15000 }
+- back
+
+# A student joins over Wi-Fi with the sharing code
+- runScript: { file: caption.js, env: { CAPTION: "Share and sync: students on the same Wi-Fi or hotspot join with your code." } }
+- tapOn: "Share & sync with students"
+- extendedWaitUntil: { visible: "[0-9A-Z]{5}-[0-9A-Z]{5}", timeout: 20000 }
+- takeScreenshot: t05-share-code
+- copyTextFrom: "[0-9A-Z]{5}-[0-9A-Z]{5}"
+- runScript: sync.js
+- runScript: { file: caption.js, env: { CAPTION: "A new student asks to join. Accept them." } }
+- extendedWaitUntil: { visible: "(?i)accept", timeout: 40000 }
+- takeScreenshot: t06-join-request
+- tapOn: "(?i)accept"
+- extendedWaitUntil: { visible: ".*CI Student.*", timeout: 30000 }
+- takeScreenshot: t07-student-joined
+- back
+
+# Assign plans to the student
+- runScript: { file: caption.js, env: { CAPTION: "Open a student to assign plans, see their workouts and keep notes." } }
+- scrollUntilVisible: { element: { text: "CI Student" }, direction: DOWN, timeout: 20000 }
+- tapOn: "CI Student"
+- takeScreenshot: t08-student
+- tapOn: "Workout plan"
+- tapOn: "Aman strength"
+- scrollUntilVisible: { element: { text: "Assign to.*" }, direction: DOWN, timeout: 10000 }
+- tapOn: "Assign to.*"
+- tapOn: { text: "OK", optional: true }
+- runScript: { file: caption.js, env: { CAPTION: "They get it on the next sync, or right now by QR code or file." } }
+- scrollUntilVisible: { element: { text: "Show plans as QR" }, direction: DOWN, timeout: 15000 }
+- tapOn: "Show plans as QR"
+- assertVisible: "Send plans"
+- takeScreenshot: t09-plans-qr
+- back
+- runScript: { file: caption.js, env: { CAPTION: "Private notes are only on your phone." } }
+- scrollUntilVisible: { element: { text: "Injuries, goals, preferences.*" }, direction: DOWN, timeout: 15000 }
+- tapOn: "Injuries, goals, preferences.*"
+- inputText: "Knee pain, no jumps"
+- hideKeyboard
+- tapOn: "Save note"
+- tapOn: { text: "OK", optional: true }
+- takeScreenshot: t10-note
+- back
+
+# No Wi-Fi: scan the student's QR
+- runScript: { file: caption.js, env: { CAPTION: "No Wi-Fi? Scan the student's QR or open their file." } }
+- scrollUntilVisible: { element: { text: "Scan a student's QR" }, direction: DOWN, timeout: 15000 }
+- tapOn: "Scan a student's QR"
+- tapOn: { text: "Allow camera", optional: true }
+- tapOn: { text: "While using the app", optional: true }
+- assertVisible: "Point the camera at the code"
+- back
+- runScript: { file: caption.js, env: { CAPTION: "That's the trainer side of FitHome." } }

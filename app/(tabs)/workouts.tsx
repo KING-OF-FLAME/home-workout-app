@@ -7,17 +7,12 @@ import { Button, Card, Chip, EmptyState, ProgressBar, Row, Screen, SectionHeader
 import { PROGRAMS, QUICK_WORKOUTS } from '@/data/programs';
 import type { Goal } from '@/data/types';
 import { equipmentSummary, estimateMinutes } from '@/lib/workout';
+import { GOALS } from '@/data/goals';
 import { useApp, useColors } from '@/store/AppStore';
 import { radius, spacing } from '@/theme';
 
 const LEVEL = ['', 'Beginner', 'Intermediate', 'Advanced'];
-const FILTERS: { id: Goal | 'all'; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'lose_weight', label: 'Lose weight' },
-  { id: 'build_muscle', label: 'Build muscle' },
-  { id: 'get_fit', label: 'Get fit' },
-  { id: 'flexibility', label: 'Flexibility' },
-];
+const FILTERS: { id: Goal | 'all'; label: string }[] = [{ id: 'all', label: 'All' }, ...GOALS.map((g) => ({ id: g.id, label: g.short }))];
 
 export default function Workouts() {
   const c = useColors();

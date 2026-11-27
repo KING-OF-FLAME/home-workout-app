@@ -4,6 +4,7 @@ import { EXERCISE_FRAMES } from '@/data/exerciseMedia';
 import { ExerciseFigure, hasFigure } from './ExerciseFigure';
 import { humanThumb, useBodySex } from './HumanAnimation';
 import type { Exercise, MuscleGroup } from '@/data/types';
+import { useApp } from '@/store/AppStore';
 import { muscleColors, radius } from '@/theme';
 import type { IconName } from './ui';
 
@@ -24,18 +25,19 @@ const groupIcon: Record<MuscleGroup, IconName> = {
 export function ExerciseThumb({ exercise, size = 52 }: { exercise: Exercise; size?: number }) {
   const color = muscleColors[exercise.group] ?? '#888';
   const sex = useBodySex();
+  const style = useApp().settings.demoStyle ?? '3d';
   const human = humanThumb(exercise.id, sex);
-  if (human) {
+  if (human && style === '3d') {
     return <Image source={human} style={{ width: size, height: size, borderRadius: radius.md, backgroundColor: '#0C0D10' }} resizeMode="cover" />;
   }
   const frames = EXERCISE_FRAMES[exercise.id];
-  if (frames) {
+  if (frames && (style === 'photo' || !hasFigure(exercise.id))) {
     return <Image source={frames[1]} style={{ width: size, height: size, borderRadius: radius.md, backgroundColor: '#fff' }} resizeMode="cover" />;
   }
   if (hasFigure(exercise.id)) {
     return (
       <View style={{ width: size, height: size, borderRadius: radius.md, backgroundColor: color + '1F', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-        <ExerciseFigure exerciseId={exercise.id} width={size * 1.25} playing={false} showCue={false} showMuscles={false} background="transparent" rounded={false} />
+        <ExerciseFigure exerciseId={exercise.id} width={size * 1.25} playing={false} showCue={false} showMuscles={false} background="transparent" rounded={false} variant={style === 'simple' ? 'simple' : 'drawn'} />
       </View>
     );
   }

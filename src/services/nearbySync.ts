@@ -33,6 +33,8 @@ import { localStore } from './docstore';
 export const SYNC_PORT = 47820;
 const PROTOCOL = 1;
 const MAX_LINE = 4_000_000;
+/** How long the host keeps a quiet connection open. */
+const HOST_IDLE_MS = 60000;
 
 import { makeCode, readCode } from './syncCode';
 
@@ -87,6 +89,34 @@ export async function localIp(): Promise<string> {
   return ip && /^\d+\.\d+\.\d+\.\d+$/.test(ip) ? ip : '0.0.0.0';
 }
 
+const hostPinPath = (trainerUid: string) => `hostPin/${trainerUid}`;
+
+function randomPin() {
+  return Math.floor(Math.random() * 65536);
+}
+
+/**
+ * The trainer's sharing PIN. It is made once and kept on this phone, so the
+ * code students saved keeps working every time the trainer shares again
+ * (as long as the phone's Wi-Fi address stays the same).
+ */
+export async function getHostPin(trainerUid: string): Promise<number> {
+  const saved = await localStore.get<{ pin: number }>(hostPinPath(trainerUid)).catch(() => null);
+  if (saved && Number.isInteger(saved.pin) && saved.pin >= 0 && saved.pin < 65536) return saved.pin;
+  const pin = randomPin();
+  await localStore.set(hostPinPath(trainerUid), { pin });
+  return pin;
+}
+
+/** Make a new sharing PIN. Codes students saved before stop working. */
+export async function rotateHostPin(trainerUid: string): Promise<number> {
+  const old = await localStore.get<{ pin: number }>(hostPinPath(trainerUid)).catch(() => null);
+  let pin = randomPin();
+  while (old && pin === old.pin) pin = randomPin();
+  await localStore.set(hostPinPath(trainerUid), { pin });
+  return pin;
+}
+
 /**
  * Start sharing from the trainer's phone. `approveJoin` is asked before a new
  * student is added; known students sync straight away.
@@ -99,12 +129,14 @@ export async function startHosting(opts: {
 }): Promise<HostHandle> {
   const ip = await localIp();
   if (ip === '0.0.0.0') throw new Error('Connect to Wi-Fi or turn on your hotspot first.');
-  const pin = opts.pin ?? Math.floor(Math.random() * 65536);
+  const pin = opts.pin ?? randomPin();
   const log = (text: string, ok = true) => opts.onEvent({ at: Date.now(), text, ok });
 
   const server = tcp().createServer((socket) => {
     socket.setEncoding('utf8');
-    socket.setTimeout(30000, () => socket.destroy());
+    // Idle timeout. It is paused while the trainer decides on a new student
+    // (the student's phone waits up to 45 s for that), then restarted.
+    socket.setTimeout(HOST_IDLE_MS, () => socket.destroy());
     // end(data) waits for the write to finish before closing. On Android a
     // separate write() + end() can close the socket before the reply is sent.
     const send = (r: Reply) => {
@@ -130,7 +162,13 @@ export async function startHosting(opts: {
             return send({ t: 'removed' });
           }
           if (!entry) {
-            const ok = await opts.approveJoin(msg.student.name);
+            socket.setTimeout(0);
+            let ok = false;
+            try {
+              ok = await opts.approveJoin(msg.student.name);
+            } finally {
+              socket.setTimeout(HOST_IDLE_MS);
+            }
             if (!ok) {
               log(`Declined ${msg.student.name}`, false);
               return send({ t: 'denied', reason: 'Your trainer declined the request.' });

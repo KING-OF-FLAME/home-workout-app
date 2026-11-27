@@ -88,9 +88,14 @@ jobs:
   smoke-test:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Maestro (end-to-end tests)
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
       - name: Enable KVM
         run: |
@@ -122,8 +127,8 @@ jobs:
             echo "----- crash lines -----"; grep -E "FATAL EXCEPTION|AndroidRuntime|ReactNativeJS|Exception|Error:" logcat.txt | grep -v "chatty" | head -80 || true
             adb shell pidof ${{ needs.build.outputs.package }} > /dev/null || (echo "App is not running: it crashed on launch" && exit 1)
             echo "App is running after 30 seconds"
-            bash scripts/ci/tour.sh ${{ needs.build.outputs.package }}
-            grep -q "sync test exit: 0" tour/sync-test.txt || (echo "Phone-to-phone sync test failed"; cat tour/sync-test.txt; adb logcat -d | grep -E "ReactNativeJS|TcpSocket|FATAL|AndroidRuntime|ANR in|has died" | tail -60; exit 1)
+            bash e2e/run.sh ${{ needs.build.outputs.package }} tour || (echo "End-to-end test failed"; cat tour/e2e-result.txt; adb logcat -d | grep -E "ReactNativeJS|FATAL|AndroidRuntime|ANR in|has died" | tail -60; exit 1)
+            grep -q "sync test exit: 0" tour/sync-test.txt || (echo "Phone-to-phone sync test failed"; cat tour/sync-test.txt; exit 1)
             adb shell pidof ${{ needs.build.outputs.package }} > /dev/null || (adb logcat -d | grep -E "FATAL EXCEPTION|AndroidRuntime|ReactNativeJS" | tail -60; echo "App crashed during the tour" && exit 1)
 
       - uses: actions/upload-artifact@v4
@@ -136,7 +141,28 @@ jobs:
       - name: Pack screenshots
         if: always()
         run: |
-          if [ -d tour ]; then cd tour && zip -q screenshots.zip *.png && ls -la; fi
+          if [ -d tour ]; then
+            cd tour
+            zip -q screenshots.zip *.png || true
+            if [ -f user.mp4 ]; then cp user.mp4 tutorial-member.mp4; fi
+            if [ -f trainer.mp4 ]; then cp trainer.mp4 tutorial-trainer.mp4; fi
+            zip -qr e2e-logs.zip maestro-*.log debug-* e2e-result.txt captions-*.log *.srt sync-test.txt || true
+            ls -la
+          fi
+
+      # On a failed run, keep the logs where they can be downloaded without an Actions login.
+      - name: Publish debug logs
+        if: failure()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ci-debug
+          target_commitish: ${{ github.sha }}
+          name: CI debug logs (latest failed run)
+          prerelease: true
+          files: |
+            tour/e2e-logs.zip
+            tour/screenshots.zip
+          body: Logs and screenshots from the latest failed emulator test (run ${{ github.run_number }}). Not an app release.
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -144,7 +170,9 @@ jobs:
           name: app-tour
           path: |
             tour/screenshots.zip
-            tour/tour.mp4
+            tour/tutorial-member.mp4
+            tour/tutorial-trainer.mp4
+            tour/e2e-logs.zip
             tour/*.png
             tour/sync-test.txt
             tour/sync-reply.json
@@ -175,7 +203,8 @@ jobs:
           files: |
             ${{ needs.build.outputs.file }}
             tour/screenshots.zip
-            tour/tour.mp4
+            tour/tutorial-member.mp4
+            tour/tutorial-trainer.mp4
           body: |
             Test build of ${{ needs.build.outputs.name }} for Android.
 

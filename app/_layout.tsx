@@ -22,7 +22,8 @@ function RootNavigator() {
 
   useEffect(() => {
     if (!ready) return;
-    const inOnboarding = segments[0] === 'onboarding';
+    // Screens the plan summary opens before the first start is finished.
+    const inOnboarding = ['onboarding', 'plan-edit', 'workout', 'exercise'].includes(segments[0] ?? '');
     if (!profile.onboarded && !inOnboarding) router.replace('/onboarding');
   }, [ready, profile.onboarded, segments, router]);
 

@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, Switch, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, Easing, Pressable, Switch, View } from 'react-native';
 import { MuscleMap } from '@/components/MuscleMap';
 import { ResultsTimeline } from '@/components/ResultsTimeline';
 import { Button, Card, Chip, Field, Row, Screen, Spacer, Stepper, Txt, type IconName } from '@/components/ui';
 import { AppConfig } from '@/config';
 import { timelineFor, type BodySlug } from '@/data/muscles';
+import { getExercise } from '@/data/exercises';
+import { GOALS } from '@/data/goals';
 import type { Goal, Level } from '@/data/types';
 import { uid } from '@/lib/id';
 import {
@@ -25,12 +27,6 @@ import { estimateMinutes } from '@/lib/workout';
 import { useApp, useColors } from '@/store/AppStore';
 import { radius, spacing } from '@/theme';
 
-const GOALS: { id: Goal; title: string; sub: string; icon: IconName }[] = [
-  { id: 'lose_weight', title: 'Lose weight', sub: 'Burn fat with cardio and circuits', icon: 'flame' },
-  { id: 'build_muscle', title: 'Build muscle', sub: 'Get stronger with bodyweight training', icon: 'barbell' },
-  { id: 'get_fit', title: 'Get fit & healthy', sub: 'Feel more energetic every day', icon: 'heart' },
-  { id: 'flexibility', title: 'Improve flexibility', sub: 'Move better, feel less stiff', icon: 'leaf' },
-];
 
 const LEVELS: { id: Level; title: string; sub: string }[] = [
   { id: 1, title: 'Beginner', sub: 'I am new or getting back into it' },
@@ -48,9 +44,12 @@ const FOCUS_SLUGS: Record<FocusArea, BodySlug[]> = {
   glutes: ['gluteal'],
 };
 
-/** Steps: 0 welcome, 1 name, 2 goal, 3 level, 4 plan length, 5 sessions & focus, 6 body, 7 your plan. */
-const ALL_STEPS = [0, 1, 2, 3, 4, 5, 6, 7];
-const PLAN_ONLY_STEPS = [2, 3, 4, 5, 7];
+/**
+ * Steps: 0 welcome, 1 name & body for demos, 6 weight & height, 2 goal, 3 level, 4 plan length,
+ * 5 time & focus, 8 generating, 7 your plan (editable).
+ */
+const ALL_STEPS = [0, 1, 6, 2, 3, 4, 5, 8, 7];
+const PLAN_ONLY_STEPS = [2, 3, 4, 5, 8, 7];
 
 function Option({ title, sub, icon, active, onPress }: { title: string; sub: string; icon?: IconName; active: boolean; onPress: () => void }) {
   const c = useColors();
@@ -117,23 +116,63 @@ export default function Onboarding() {
     });
   };
 
+  // The plan is built (and saved) on the "generating" step, so it can be edited on the next one.
+  const [built, setBuilt] = useState<MyPlan | null>(null);
+  const build = (keepProgress: boolean) => {
+    const old = myPlan;
+    const plan: MyPlan = {
+      ...draftPlan,
+      id: keepProgress && old ? old.id : uid('plan_'),
+      createdAt: keepProgress && old ? old.createdAt : Date.now(),
+      completed: keepProgress && old ? old.completed : [],
+      intensity: keepProgress && old ? old.intensity : 1,
+    };
+    updateProfile({ name: name.trim() || profile.name, sex, goal, level, daysPerWeek: days, weightKg: weight, heightCm: height });
+    setMyPlan(plan);
+    setBuilt(plan);
+    setPos(order.indexOf(8));
+  };
+
   const finish = () => {
-    updateProfile({ name: name.trim() || profile.name, sex, goal, level, daysPerWeek: days, weightKg: weight, heightCm: height, onboarded: true });
-    setMyPlan({ ...draftPlan, id: uid('plan_'), createdAt: Date.now() });
+    updateProfile({ onboarded: true });
     if (planOnly === '1' && router.canGoBack()) router.back();
     else router.replace('/');
   };
 
-  const next = () => (pos < total - 1 ? setPos(pos + 1) : finish());
+  const next = () => {
+    const nextStep = order[pos + 1];
+    if (nextStep === 8) {
+      // Changing an existing plan: ask before throwing away finished workouts.
+      if (planOnly === '1' && myPlan && myPlan.completed.length > 0) {
+        Alert.alert(
+          'Keep your progress?',
+          `You have finished ${myPlan.completed.length} workout${myPlan.completed.length === 1 ? '' : 's'} of your current plan.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Start fresh', onPress: () => build(false) },
+            { text: 'Keep progress', onPress: () => build(true) },
+          ],
+          { cancelable: true },
+        );
+        return;
+      }
+      return build(false);
+    }
+    if (pos < total - 1) setPos(pos + 1);
+    else finish();
+  };
+  const back = () => setPos(order[pos - 1] === 8 ? Math.max(0, pos - 2) : pos - 1);
 
   return (
     <Screen
       edges={['top', 'bottom']}
       footer={
         <View style={{ padding: spacing.lg, gap: spacing.sm }}>
-          <Button title={pos === total - 1 ? 'Start training' : 'Continue'} onPress={next} disabled={step === 1 && !name.trim()} />
-          {pos > 0 ? (
-            <Button title="Back" variant="ghost" onPress={() => setPos(pos - 1)} />
+          {step === 8 ? null : (
+            <Button title={pos === total - 1 ? 'Start training' : order[pos + 1] === 8 ? 'Build my plan' : 'Continue'} onPress={next} disabled={step === 1 && !name.trim()} />
+          )}
+          {step === 8 ? null : pos > 0 ? (
+            <Button title="Back" variant="ghost" onPress={back} />
           ) : planOnly === '1' ? (
             <Button title="Cancel" variant="ghost" onPress={() => router.back()} />
           ) : null}
@@ -175,7 +214,7 @@ export default function Onboarding() {
         <View>
           <Txt variant="h1">What should we call you?</Txt>
           <Spacer />
-          <Field placeholder="Your first name" value={name} onChangeText={setName} autoFocus maxLength={30} />
+          <Field placeholder="Your first name" value={name} onChangeText={setName} maxLength={30} returnKeyType="done" />
           <Spacer />
           <Txt variant="h3">Show exercises with</Txt>
           <Txt variant="small" dim style={{ marginBottom: spacing.md }}>Every demo is performed by this body. Change it anytime in Profile.</Txt>
@@ -262,13 +301,15 @@ export default function Onboarding() {
         </View>
       )}
 
-      {step === 7 && <PlanSummary plan={draftPlan} name={name.trim() || profile.name} />}
+      {step === 8 && <Generating plan={draftPlan} name={name.trim() || profile.name} onDone={() => setPos(order.indexOf(7))} />}
+
+      {step === 7 && <PlanSummary plan={myPlan && built && myPlan.id === built.id ? myPlan : built ?? draftPlan} name={name.trim() || profile.name} />}
 
       {step === 6 && (
         <View>
           <Txt variant="h1">About your body</Txt>
           <Txt dim style={{ marginTop: 6 }}>
-            Used only on this phone to estimate calories and BMI.
+            Used to size your plan and estimate calories. It stays on this phone.
           </Txt>
           <Spacer />
           <Row style={{ justifyContent: 'space-between', marginBottom: spacing.lg }}>
@@ -293,8 +334,50 @@ export default function Onboarding() {
   );
 }
 
+/** A short "building your plan" moment, so the user sees the plan being made for them. */
+function Generating({ plan, name, onDone }: { plan: MyPlan; name: string; onDone: () => void }) {
+  const c = useColors();
+  const progress = useRef(new Animated.Value(0)).current;
+  const [done, setDone] = useState(0);
+  const weeks = totalWeeks(plan);
+  const goal = GOALS.find((g) => g.id === plan.goal);
+  const lines = [
+    `Reading your goal: ${goal?.title ?? 'fitness'}`,
+    `Picking exercises for your level`,
+    `Balancing muscles across ${plan.daysPerWeek} workouts a week`,
+    Number.isFinite(weeks) ? `Making it harder week by week for ${weeks} weeks` : 'Setting up new workouts every week',
+  ];
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
+  useEffect(() => {
+    Animated.timing(progress, { toValue: 1, duration: 3200, easing: Easing.inOut(Easing.quad), useNativeDriver: false }).start();
+    const timers = lines.map((_, i) => setTimeout(() => setDone(i + 1), 650 * (i + 1)));
+    timers.push(setTimeout(() => doneRef.current(), 3500));
+    return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <View style={{ paddingTop: spacing.xxl }}>
+      <Txt variant="h1">{name ? `Building your plan, ${name}` : 'Building your plan'}</Txt>
+      <Txt dim style={{ marginTop: 6 }}>This takes a few seconds.</Txt>
+      <View style={{ height: 10, borderRadius: 5, backgroundColor: c.surfaceAlt, marginTop: spacing.xl, overflow: 'hidden' }}>
+        <Animated.View style={{ height: 10, borderRadius: 5, backgroundColor: c.primary, width: progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }} />
+      </View>
+      <View style={{ marginTop: spacing.xl, gap: spacing.md }}>
+        {lines.map((l, i) => (
+          <Row key={l} gap={spacing.md}>
+            {i < done ? <Ionicons name="checkmark-circle" size={22} color={c.primary} /> : <ActivityIndicator size="small" color={c.textMuted} />}
+            <Txt style={{ flex: 1 }} dim={i >= done}>{l}</Txt>
+          </Row>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function PlanSummary({ plan, name }: { plan: MyPlan; name: string }) {
   const c = useColors();
+  const router = useRouter();
   const sessions = totalSessions(plan);
   const weeks = totalWeeks(plan);
   const shownWeeks = Number.isFinite(weeks) ? weeks : 12;
@@ -350,12 +433,13 @@ function PlanSummary({ plan, name }: { plan: MyPlan; name: string }) {
 
       <Txt variant="h3" style={{ marginTop: spacing.lg, marginBottom: spacing.sm }}>What to expect</Txt>
       <ResultsTimeline
-        items={timelineFor(plan.goal === 'flexibility' ? 'mobility' : 'fullbody').filter(
+        items={timelineFor(plan.goal === 'flexibility' ? 'mobility' : plan.goal === 'kegel' ? 'core' : 'fullbody').filter(
           (m) => !Number.isFinite(weeks) || m.week <= weeks,
         )}
       />
 
       <Txt variant="h3" style={{ marginTop: spacing.lg }}>Week 1</Txt>
+      <Txt variant="small" dim>Tap a workout to see its exercises. Use Change to swap, remove or add exercises.</Txt>
       {firstWeek.map((w, i) => (
         <Card key={i} style={{ marginTop: spacing.sm }}>
           <Row>
@@ -366,7 +450,17 @@ function PlanSummary({ plan, name }: { plan: MyPlan; name: string }) {
               <Txt style={{ fontWeight: '700' }}>{w.title}</Txt>
               <Txt variant="small" muted>~{estimateMinutes(w)} min · {w.items.length} exercises</Txt>
             </View>
+            {plan.id !== 'preview' ? (
+              <Button title="Change" small variant="secondary" onPress={() => router.push({ pathname: '/plan-edit', params: { day: String(i) } })} />
+            ) : null}
           </Row>
+          {plan.id !== 'preview' ? (
+            <Pressable onPress={() => router.push({ pathname: '/workout/preview', params: { kind: 'plan', id: plan.id, day: String(i) } })} style={{ marginTop: spacing.sm }}>
+              <Txt variant="small" dim numberOfLines={2}>
+                {w.items.map((it) => getExercise(it.exerciseId)?.name).filter(Boolean).join(' · ')}
+              </Txt>
+            </Pressable>
+          ) : null}
         </Card>
       ))}
     </View>
