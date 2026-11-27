@@ -62,7 +62,7 @@ swipe; shot 16-complete-muscles
 tap "Done"; sleep 2
 
 kill -INT $REC 2>/dev/null; sleep 3
-adb shell screenrecord --time-limit 175 --bit-rate 6000000 /sdcard/tour-2.mp4 &
+adb shell screenrecord --time-limit 178 --bit-rate 6000000 /sdcard/tour-2.mp4 &
 REC=$!
 sleep 1
 
@@ -70,22 +70,52 @@ sleep 1
 tap "Workouts"; shot 17-workouts
 tap "Exercises"; shot 18-exercise-library
 tap "Push-ups"; sleep 3; shot 19-exercise-detail
+tap "Real photos"; sleep 2; shot 19b-exercise-photos; tap "Animation"; sleep 1
 swipe; shot 20-exercise-how-to
 swipe; shot 21-exercise-mistakes
 swipe; shot 22-exercise-muscles
 back; back
 tap "Progress"; sleep 2; shot 23-progress
 swipe; shot 24-progress-muscles
-tap "Coach"; shot 25-coach
+tap "Details"; sleep 3; shot 24b-muscles-detail
+swipe; shot 24c-muscles-list
+back
 tap "Profile"; shot 26-profile
+tap "How to use"; sleep 2; shot 27-how-to-use
+back
+
+kill -INT $REC 2>/dev/null; sleep 3
+adb shell screenrecord --time-limit 178 --bit-rate 6000000 /sdcard/tour-3.mp4 &
+REC=$!
+sleep 1
+
+# Trainer phone: turn sharing on, then a test student (this script) joins and syncs.
+tap "Coach"; shot 25-coach
+tap "I am a trainer"; sleep 1; tap "Switch"; sleep 2; shot 28-trainer
+tap "Share & sync with students"; sleep 4; shot 29-share-code
+CODE=$(python3 "$DIR/find_text.py" '[0-9A-Z]{5}-[0-9A-Z]{5}' || true)
+echo "sharing code: $CODE"
+if [ -n "$CODE" ]; then
+  adb forward tcp:47820 tcp:47820
+  python3 "$DIR/sync_test.py" "$CODE" "$OUT/sync-reply.json" > "$OUT/sync-test.txt" 2>&1 &
+  SYNC=$!
+  sleep 4; tap "Accept"; sleep 2; shot 30-student-joined
+  wait $SYNC; echo "sync test exit: $?" >> "$OUT/sync-test.txt"
+  cat "$OUT/sync-test.txt"
+  back; sleep 2; shot 31-trainer-students
+else
+  echo "sync test exit: no code" > "$OUT/sync-test.txt"
+fi
 tap "Today"; sleep 2
 
 kill -INT $REC 2>/dev/null; sleep 4
 adb pull /sdcard/tour-1.mp4 "$OUT/tour-1.mp4" >/dev/null
 adb pull /sdcard/tour-2.mp4 "$OUT/tour-2.mp4" >/dev/null
+adb pull /sdcard/tour-3.mp4 "$OUT/tour-3.mp4" >/dev/null
 if command -v ffmpeg >/dev/null; then
-  printf "file 'tour-1.mp4'\nfile 'tour-2.mp4'\n" > "$OUT/parts.txt"
-  ffmpeg -loglevel error -f concat -safe 0 -i "$OUT/parts.txt" -c copy "$OUT/tour.mp4" && rm -f "$OUT/tour-1.mp4" "$OUT/tour-2.mp4"
+  : > "$OUT/parts.txt"
+  for p in 1 2 3; do [ -f "$OUT/tour-$p.mp4" ] && echo "file 'tour-$p.mp4'" >> "$OUT/parts.txt"; done
+  ffmpeg -loglevel error -f concat -safe 0 -i "$OUT/parts.txt" -c copy "$OUT/tour.mp4" && rm -f "$OUT"/tour-[123].mp4
   rm -f "$OUT/parts.txt"
 fi
 [ -f "$OUT/tour.mp4" ] || mv "$OUT/tour-1.mp4" "$OUT/tour.mp4"

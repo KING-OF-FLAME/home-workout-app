@@ -296,3 +296,54 @@ export function timelineFor(group: MuscleGroup): Milestone[] {
 }
 
 export const RESULTS_NOTE = 'Everyone is different. Results depend on how often you train, what you eat, sleep and where you start.';
+
+export interface MuscleStat {
+  slug: BodySlug;
+  /** Sets this week: a set counts 1 for a main muscle and 0.5 for a helper. */
+  sets: number;
+  lastTrained: number | null;
+  status: 'fresh' | 'recovering' | 'rested' | 'untrained';
+  /** Exercise ids that trained this muscle this week, most sets first. */
+  topExercises: string[];
+}
+
+/** Weekly sets that most guidelines call enough to grow a muscle group. */
+export const WEEKLY_TARGET_SETS = 10;
+
+/** Per-muscle training summary for the last 7 days. */
+export function weeklyMuscleStats(sessions: { startedAt: number; exercises?: string[] }[], now = Date.now()): MuscleStat[] {
+  const since = now - 7 * 86400000;
+  const sets = new Map<BodySlug, number>();
+  const last = new Map<BodySlug, number>();
+  const byEx = new Map<BodySlug, Map<string, number>>();
+  for (const s of sessions) {
+    if (s.startedAt < since) continue;
+    for (const id of s.exercises ?? []) {
+      const info = MUSCLE_INFO[id];
+      if (!info) continue;
+      const credit = (slug: BodySlug, k: number) => {
+        sets.set(slug, (sets.get(slug) ?? 0) + k);
+        last.set(slug, Math.max(last.get(slug) ?? 0, s.startedAt));
+        const m = byEx.get(slug) ?? new Map<string, number>();
+        m.set(id, (m.get(id) ?? 0) + k);
+        byEx.set(slug, m);
+      };
+      info.primary.forEach((slug) => credit(slug, 1));
+      info.secondary.forEach((slug) => credit(slug, 0.5));
+    }
+  }
+  return (Object.keys(BODY_LABEL) as BodySlug[]).map((slug) => {
+    const lt = last.get(slug) ?? null;
+    const hours = lt ? (now - lt) / 3600000 : Infinity;
+    const status: MuscleStat['status'] = !lt ? 'untrained' : hours < 24 ? 'fresh' : hours < 48 ? 'recovering' : 'rested';
+    const top = [...(byEx.get(slug) ?? new Map()).entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
+    return { slug, sets: Math.round((sets.get(slug) ?? 0) * 2) / 2, lastTrained: lt, status, topExercises: top.slice(0, 3) };
+  });
+}
+
+/** Which exercises to suggest for a muscle: ones where it is a main muscle. */
+export function exercisesFor(slug: BodySlug): string[] {
+  return Object.entries(MUSCLE_INFO)
+    .filter(([, info]) => info.primary.includes(slug))
+    .map(([id]) => id);
+}

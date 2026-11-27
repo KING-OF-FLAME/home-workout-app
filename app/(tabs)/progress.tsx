@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, View } from 'react-native';
 import { BannerAdSlot } from '@/components/BannerAdSlot';
@@ -18,6 +19,7 @@ function bmiInfo(kg: number, cm: number): { bmi: number; label: string } {
 
 export default function Progress() {
   const c = useColors();
+  const router = useRouter();
   const { stats, history, weights, profile, settings, addWeight, deleteSession } = useApp();
   const [logging, setLogging] = useState(false);
   const imperial = settings.units === 'imperial';
@@ -70,7 +72,7 @@ export default function Progress() {
         <StatTile icon="trophy" label="Best streak" value={`${stats.bestStreak}d`} color="#B07CFF" />
       </Row>
 
-      <SectionHeader title="Muscles trained this week" />
+      <SectionHeader title="Muscles trained this week" action="Details" onAction={() => router.push('/muscles')} />
       <Card>
         {muscles.data.length ? (
           <>

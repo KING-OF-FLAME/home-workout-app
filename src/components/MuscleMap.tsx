@@ -27,8 +27,14 @@ export function MuscleMap({
   animate = true,
   legend = true,
   gender = 'male',
+  onPress,
+  selected,
 }: {
   data: MuscleHighlight[];
+  /** Tap a muscle on the map. */
+  onPress?: (slug: BodySlug) => void;
+  /** Outline this muscle. */
+  selected?: BodySlug | null;
   scale?: number;
   animate?: boolean;
   legend?: boolean;
@@ -76,6 +82,31 @@ export function MuscleMap({
               <Animated.View style={{ position: 'absolute', left: 0, top: 0, opacity: pulse }} pointerEvents="none">
                 <Body data={data} side={side} gender={gender} scale={scale} colors={HEAT} defaultFill="transparent" border="none" />
               </Animated.View>
+              {selected ? (
+                <View style={{ position: 'absolute', left: 0, top: 0 }} pointerEvents="none">
+                  <Body
+                    data={[{ slug: selected, styles: { fill: 'transparent', stroke: c.text, strokeWidth: 3 } }]}
+                    side={side}
+                    gender={gender}
+                    scale={scale}
+                    defaultFill="transparent"
+                    border="none"
+                  />
+                </View>
+              ) : null}
+              {onPress ? (
+                <View style={{ position: 'absolute', left: 0, top: 0, opacity: 0.01 }}>
+                  <Body
+                    data={[]}
+                    side={side}
+                    gender={gender}
+                    scale={scale}
+                    defaultFill="#000"
+                    border="none"
+                    onBodyPartPress={(b) => b.slug && b.slug in BODY_LABEL && onPress(b.slug as BodySlug)}
+                  />
+                </View>
+              ) : null}
             </View>
             <Txt variant="caption" muted style={{ marginTop: 4 }}>
               {side === 'front' ? 'Front' : 'Back'}

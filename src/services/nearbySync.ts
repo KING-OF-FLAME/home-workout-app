@@ -10,7 +10,14 @@
  * Messages are single lines of JSON. Nothing leaves the local network.
  */
 import * as Network from 'expo-network';
-import TcpSocket from 'react-native-tcp-socket';
+import type TcpSocketModule from 'react-native-tcp-socket';
+
+/** Loaded on first use, so a phone without the native module can still open the app. */
+function tcp(): typeof TcpSocketModule {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mod = require('react-native-tcp-socket');
+  return (mod.default ?? mod) as typeof TcpSocketModule;
+}
 import {
   addRosterEntry,
   getRosterEntry,
@@ -27,39 +34,9 @@ export const SYNC_PORT = 47820;
 const PROTOCOL = 1;
 const MAX_LINE = 4_000_000;
 
-// ---------------- Codes ----------------
+import { makeCode, readCode } from './syncCode';
 
-const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-
-/** 4 IP bytes + 2 PIN bytes, as 10 easy-to-type characters, e.g. "K7Q2M-9XA3F". */
-export function makeCode(ip: string, pin: number): string {
-  const bytes = [...ip.split('.').map((n) => Number(n) & 255), (pin >> 8) & 255, pin & 255];
-  let bits = 0n;
-  for (const b of bytes) bits = (bits << 8n) | BigInt(b);
-  let out = '';
-  for (let i = 0; i < 10; i++) {
-    out = ALPHABET[Number(bits & 31n)] + out;
-    bits >>= 5n;
-  }
-  return `${out.slice(0, 5)}-${out.slice(5)}`;
-}
-
-export function readCode(raw: string): { ip: string; pin: number } | null {
-  const s = raw.toUpperCase().replace(/[^0-9A-Z]/g, '').replace(/O/g, '0').replace(/I/g, '1');
-  if (s.length !== 10) return null;
-  let bits = 0n;
-  for (const ch of s) {
-    const v = ALPHABET.indexOf(ch);
-    if (v < 0) return null;
-    bits = (bits << 5n) | BigInt(v);
-  }
-  const bytes: number[] = [];
-  for (let i = 0; i < 6; i++) {
-    bytes.unshift(Number(bits & 255n));
-    bits >>= 8n;
-  }
-  return { ip: bytes.slice(0, 4).join('.'), pin: (bytes[4] << 8) | bytes[5] };
-}
+export { makeCode, readCode };
 
 // ---------------- Messages ----------------
 
@@ -125,7 +102,7 @@ export async function startHosting(opts: {
   const pin = opts.pin ?? Math.floor(Math.random() * 65536);
   const log = (text: string, ok = true) => opts.onEvent({ at: Date.now(), text, ok });
 
-  const server = TcpSocket.createServer((socket) => {
+  const server = tcp().createServer((socket) => {
     socket.setEncoding('utf8');
     socket.setTimeout(30000, () => socket.destroy());
     const send = (r: Reply) => {
@@ -205,7 +182,7 @@ function talk(host: string, hello: Hello, timeoutMs: number): Promise<Reply> {
       socket.destroy();
     };
     const timer = setTimeout(() => done(() => reject(new Error('timeout'))), timeoutMs);
-    const socket = TcpSocket.createConnection({ host, port: SYNC_PORT }, () => {
+    const socket = tcp().createConnection({ host, port: SYNC_PORT }, () => {
       socket.write(JSON.stringify(hello) + '\n');
     });
     socket.setEncoding('utf8');

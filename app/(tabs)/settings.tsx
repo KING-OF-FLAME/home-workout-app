@@ -86,7 +86,9 @@ export default function SettingsScreen() {
       <SectionHeader title="Account" />
       <Card>
         {!auth.enabled ? (
-          <Txt dim>You are using the app offline. Everything is saved on this phone.</Txt>
+          <Txt dim>
+            No account needed: everything is saved on this phone{auth.profile ? `, which is set up as a ${auth.profile.role === 'trainer' ? 'trainer' : 'member'} phone` : ''}. Trainers and students sync phone to phone in the Coach tab.
+          </Txt>
         ) : auth.user ? (
           <>
             <ListRow
@@ -207,6 +209,7 @@ export default function SettingsScreen() {
 
       <SectionHeader title="About" />
       <Card style={{ paddingVertical: spacing.sm }}>
+        <ListRow icon="help-circle-outline" title="How to use" onPress={() => router.push('/help')} />
         {showPrivacy ? <ListRow icon="shield-checkmark-outline" title="Ad privacy options" onPress={() => showPrivacyOptions()} /> : null}
         <ListRow icon="document-text-outline" title="Privacy policy" onPress={() => Linking.openURL(AppConfig.brand.privacyPolicyUrl)} />
         <ListRow icon="reader-outline" title="Terms of use" onPress={() => Linking.openURL(AppConfig.brand.termsUrl)} />
