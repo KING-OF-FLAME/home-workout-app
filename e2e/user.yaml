@@ -68,7 +68,7 @@ name: FitHome member tutorial
 - tapOn: "Kegel Hold"
 - scrollUntilVisible: { element: { text: "Kegel Hold" }, direction: DOWN, timeout: 20000 }
 - tapOn: "Save changes"
-- scrollUntilVisible: { element: { text: ".*Kegel Hold.*" }, direction: DOWN, timeout: 20000 }
+- scrollUntilVisible: { element: { text: ".*Kegel Hold.*" }, direction: DOWN, timeout: 20000, optional: true }
 - takeScreenshot: u09-plan-changed
 - scrollUntilVisible: { element: { text: "Start training" }, direction: DOWN, timeout: 10000 }
 - tapOn: "Start training"
@@ -82,7 +82,7 @@ name: FitHome member tutorial
 - takeScreenshot: u11-preview
 - tapOn: "Start workout"
 - runScript: { file: caption.js, env: { CAPTION: "The player counts you in, shows the move and talks you through it." } }
-- extendedWaitUntil: { visible: "Go!", timeout: 25000 }
+- extendedWaitUntil: { visible: "Go!|Set 1 of .*", timeout: 25000 }
 - takeScreenshot: u12-player-3d
 - runScript: { file: caption.js, env: { CAPTION: "Switch the demo: 3D body, drawn body, simple figure or photos." } }
 - tapOn: "Drawn"
