@@ -66,7 +66,7 @@ name: FitHome member tutorial
 - inputText: "Kegel"
 - hideKeyboard
 - tapOn: "Kegel Hold"
-- scrollUntilVisible: { element: { text: "Kegel Hold" }, direction: DOWN, timeout: 20000 }
+- scrollUntilVisible: { element: { text: ".*Kegel Hold" }, direction: DOWN, timeout: 20000 }
 - tapOn: "Save changes"
 - scrollUntilVisible: { element: { text: ".*Kegel Hold.*" }, direction: DOWN, timeout: 20000, optional: true }
 - takeScreenshot: u09-plan-changed
