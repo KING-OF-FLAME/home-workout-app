@@ -3,6 +3,8 @@ import { Platform } from 'react-native';
 import { AppConfig } from '@/config';
 
 const CHANNEL = 'reminders';
+const DAILY_ID = 'daily-workout';
+const COACH_ID = 'coach-sync';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -41,8 +43,9 @@ const MESSAGES = [
 export async function scheduleDailyReminder(hour: number, minute: number): Promise<boolean> {
   const ok = await ensurePermission();
   if (!ok) return false;
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  await Notifications.cancelScheduledNotificationAsync(DAILY_ID).catch(() => undefined);
   await Notifications.scheduleNotificationAsync({
+    identifier: DAILY_ID,
     content: {
       title: AppConfig.app.name,
       body: MESSAGES[Math.floor(Math.random() * MESSAGES.length)],
@@ -54,5 +57,27 @@ export async function scheduleDailyReminder(hour: number, minute: number): Promi
 
 export async function cancelReminders(): Promise<void> {
   if (Platform.OS === 'web') return;
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  await Notifications.cancelScheduledNotificationAsync(DAILY_ID).catch(() => undefined);
+}
+
+/**
+ * Weekly nudge for students to sync with their coach (phone-to-phone sync needs
+ * both phones nearby, so a reminder keeps plans and progress fresh).
+ */
+export async function scheduleCoachSyncReminder(coachName: string): Promise<boolean> {
+  const ok = await ensurePermission();
+  if (!ok) return false;
+  await Notifications.cancelScheduledNotificationAsync(COACH_ID).catch(() => undefined);
+  const now = new Date();
+  await Notifications.scheduleNotificationAsync({
+    identifier: COACH_ID,
+    content: { title: AppConfig.app.name, body: `Time to sync with ${coachName}: get your new plan and share this week's workouts.` },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: now.getDay() + 1, hour: 18, minute: 0, channelId: CHANNEL },
+  });
+  return true;
+}
+
+export async function cancelCoachSyncReminder(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  await Notifications.cancelScheduledNotificationAsync(COACH_ID).catch(() => undefined);
 }

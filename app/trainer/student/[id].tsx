@@ -80,7 +80,7 @@ export default function StudentDetail() {
       <Stack.Screen options={{ title: student.name }} />
       <ErrorText message={error} />
       <Txt variant="h1">{student.name}</Txt>
-      <Txt muted>{student.email} · joined {new Date(student.joinedAt).toLocaleDateString()}</Txt>
+      <Txt muted>{student.email ? `${student.email} · ` : ''}joined {new Date(student.joinedAt).toLocaleDateString()}</Txt>
 
       <Row style={{ marginTop: spacing.lg }}>
         <StatTile icon="calendar" label="This week" value={thisWeek} />

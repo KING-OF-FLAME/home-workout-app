@@ -19,6 +19,7 @@ const config: ExpoConfig = {
     supportsTablet: true,
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      NSLocalNetworkUsageDescription: 'Used to share workout plans between a trainer and students on the same Wi-Fi or hotspot.',
     },
   },
   android: {

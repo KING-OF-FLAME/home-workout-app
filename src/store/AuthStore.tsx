@@ -13,11 +13,19 @@ import {
 } from 'firebase/auth';
 import { isFirebaseConfigured } from '@/config';
 import { firebase } from '@/lib/firebase';
-import { createUserDoc, deleteAccountData, getUserDoc, type Role, type UserDoc } from '@/services/cloud';
+import { uid as makeId } from '@/lib/id';
+import { createUserDoc, deleteAccountData, getUserDoc, updateUserDoc, type Role, type UserDoc } from '@/services/cloud';
+import { localStore } from '@/services/docstore';
+import { useApp } from './AppStore';
 
 interface AuthValue {
   /** False when Firebase is not configured: the app runs fully offline. */
   enabled: boolean;
+  /**
+   * True when running without Firebase. `profile` is then a local identity on
+   * this phone (no account needed) and trainers sync with students phone to phone.
+   */
+  offline: boolean;
   loading: boolean;
   user: User | null;
   profile: UserDoc | null;
@@ -48,8 +56,23 @@ export function friendlyAuthError(e: unknown): string {
   return map[code] ?? (e instanceof Error ? e.message : 'Something went wrong. Please try again.');
 }
 
+const LOCAL_ID = 'localIdentity/me';
+
+/** The offline identity: created once per phone, named after the user's profile. */
+async function loadLocalProfile(name: string): Promise<UserDoc> {
+  const id = await localStore.get<{ uid: string }>(LOCAL_ID);
+  if (id) {
+    const existing = await getUserDoc(id.uid);
+    if (existing) return existing;
+  }
+  const uid = id?.uid ?? makeId('u_');
+  await localStore.set(LOCAL_ID, { uid });
+  return createUserDoc({ uid, displayName: name || 'Athlete', email: '', role: 'member' });
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [loading, setLoading] = useState(isFirebaseConfigured);
+  const app = useApp();
+  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserDoc | null>(null);
   // While signUp() is creating the profile, the auth listener must not create a default one.
@@ -61,6 +84,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (existing) return existing;
     return createUserDoc({ uid: u.uid, displayName: u.displayName ?? 'Athlete', email: u.email ?? '', role: 'member' });
   }, []);
+
+  // Offline: load the local identity and keep its name in step with the profile.
+  useEffect(() => {
+    if (isFirebaseConfigured || !app.ready) return;
+    loadLocalProfile(app.profile.name.trim())
+      .then(async (p) => {
+        const name = app.profile.name.trim();
+        if (name && p.displayName !== name) {
+          await updateUserDoc(p.uid, { displayName: name });
+          p = { ...p, displayName: name };
+        }
+        setProfile(p);
+      })
+      .catch(() => setProfile(null))
+      .finally(() => setLoading(false));
+  }, [app.ready, app.profile.name]);
 
   useEffect(() => {
     const fb = firebase();
@@ -83,10 +122,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   /** Reload the profile (also retries after a failed load). Throws on network errors. */
   const refresh = useCallback(async () => {
+    if (!isFirebaseConfigured) {
+      setProfile(await loadLocalProfile(app.profile.name.trim()));
+      return;
+    }
     const current = firebase()?.auth.currentUser;
     if (!current) return;
     setProfile(await loadProfile(current));
-  }, [loadProfile]);
+  }, [loadProfile, app.profile.name]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const fb = firebase();
@@ -145,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ enabled: isFirebaseConfigured, loading, user, profile, signIn, signUp, resetPassword, signOut, refresh, deleteAccount }}
+      value={{ enabled: isFirebaseConfigured, offline: !isFirebaseConfigured, loading, user, profile, signIn, signUp, resetPassword, signOut, refresh, deleteAccount }}
     >
       {children}
     </Ctx.Provider>

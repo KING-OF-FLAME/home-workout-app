@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { BannerAdSlot } from '@/components/BannerAdSlot';
 import { Button, Card, Divider, EmptyState, ErrorText, Field, ListRow, Loading, Row, Screen, SectionHeader, StatTile, Txt } from '@/components/ui';
-import { AppConfig, isFirebaseConfigured } from '@/config';
+import { AppConfig, isFirebaseConfigured, trainerFeaturesAvailable } from '@/config';
+import { cancelCoachSyncReminder, scheduleCoachSyncReminder } from '@/lib/notifications';
+import { getCoachLink, syncWithTrainer, unlinkTrainer, type CoachLink } from '@/services/nearbySync';
 import {
   getRosterEntry,
   leaveTrainer,
@@ -23,9 +25,9 @@ import { spacing } from '@/theme';
 
 export default function Coach() {
   const auth = useAuth();
-  if (!isFirebaseConfigured) return <NotConfigured />;
+  if (!trainerFeaturesAvailable) return <NotConfigured />;
   if (auth.loading) return <Loading />;
-  if (!auth.user) return <SignedOut />;
+  if (isFirebaseConfigured && !auth.user) return <SignedOut />;
   if (!auth.profile) return <ProfileError />;
   if (auth.profile.role === 'trainer') return <TrainerDashboard />;
   return <StudentView />;
@@ -38,8 +40,8 @@ function NotConfigured() {
       <Card style={{ marginTop: spacing.lg }}>
         <EmptyState
           icon="cloud-offline"
-          title="Coach features are not set up"
-          message="Add your Firebase keys in config/app-config.json to let trainers add students and assign workout and meal plans. See the README."
+          title="Coach features are turned off"
+          message="Set features.trainerMode to true in config/app-config.json to let trainers add students and assign workout and meal plans."
         />
       </Card>
     </Screen>
@@ -114,7 +116,8 @@ function SignedOut() {
 function TrainerDashboard() {
   const c = useColors();
   const router = useRouter();
-  const { profile } = useAuth();
+  const { profile, offline, refresh } = useAuth();
+  const addRoute = offline ? '/trainer/share' : '/trainer/invite';
   const [students, setStudents] = useState<RosterEntry[] | null>(null);
   const [counts, setCounts] = useState({ plans: 0, meals: 0 });
   const [error, setError] = useState<string | null>(null);
@@ -145,21 +148,40 @@ function TrainerDashboard() {
         <StatTile icon="restaurant" label="Meal plans" value={counts.meals} color={c.warning} />
       </Row>
 
+      {offline ? (
+        <Card tint={c.primary} style={{ marginTop: spacing.lg }} onPress={() => router.push('/trainer/share')}>
+          <Row>
+            <Ionicons name="radio" size={24} color="#fff" />
+            <View style={{ flex: 1 }}>
+              <Txt variant="h3" color="#fff">Share & sync with students</Txt>
+              <Txt variant="small" color="#ffffffdd">Your phone is the host. Students join with your code on the same Wi-Fi or your hotspot.</Txt>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#fff" />
+          </Row>
+        </Card>
+      ) : null}
+
       <SectionHeader title="Quick actions" />
       <Card style={{ paddingVertical: spacing.sm }}>
-        <ListRow icon="person-add" iconColor={c.primary} title="Add a student" subtitle="Share an invite code" onPress={() => router.push('/trainer/invite')} />
+        <ListRow icon="person-add" iconColor={c.primary} title="Add a student" subtitle={offline ? 'Show your code' : 'Share an invite code'} onPress={() => router.push(addRoute)} />
         <Divider />
         <ListRow icon="barbell" iconColor={c.accent} title="Workout plans" subtitle="Build multi-day plans" onPress={() => router.push('/trainer/plans')} />
         <Divider />
         <ListRow icon="restaurant" iconColor={c.warning} title="Meal plans" subtitle="Meals, calories and macros" onPress={() => router.push('/trainer/meals')} />
       </Card>
 
-      <SectionHeader title="Students" action="Add" onAction={() => router.push('/trainer/invite')} />
+      <SectionHeader title="Students" action="Add" onAction={() => router.push(addRoute)} />
       {students === null ? (
         <Loading />
       ) : students.length === 0 ? (
         <Card>
-          <EmptyState icon="people" title="No students yet" message="Create an invite code and share it. When a student enters it, they appear here." action="Invite a student" onAction={() => router.push('/trainer/invite')} />
+          <EmptyState
+            icon="people"
+            title="No students yet"
+            message={offline ? 'Start sharing and give your code to a student. When they enter it and you accept, they appear here.' : 'Create an invite code and share it. When a student enters it, they appear here.'}
+            action={offline ? 'Start sharing' : 'Invite a student'}
+            onAction={() => router.push(addRoute)}
+          />
         </Card>
       ) : (
         <Card style={{ paddingVertical: spacing.sm }}>
@@ -177,11 +199,211 @@ function TrainerDashboard() {
         </Card>
       )}
       <BannerAdSlot placement="coach" />
+      {offline ? (
+        <Button
+          title="Use this phone as a member instead"
+          variant="ghost"
+          style={{ marginTop: spacing.xl }}
+          onPress={() =>
+            Alert.alert('Switch to member?', 'Your students and plans stay saved on this phone. Switch back anytime.', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Switch', onPress: async () => { if (profile) { await updateUserDoc(profile.uid, { role: 'member' }); await refresh(); } } },
+            ])
+          }
+        />
+      ) : null}
     </Screen>
   );
 }
 
 function StudentView() {
+  return useAuth().offline ? <OfflineStudentView /> : <CloudStudentView />;
+}
+
+/** Student without an account: joins and syncs with the trainer's phone over Wi-Fi or hotspot. */
+function OfflineStudentView() {
+  const c = useColors();
+  const router = useRouter();
+  const { profile, refresh } = useAuth();
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [link, setLink] = useState<CoachLink | null>(null);
+  const [assignments, setAssignments] = useState<Assignment[] | null>(null);
+  const [editingCode, setEditingCode] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!profile) return;
+    setLink(await getCoachLink());
+    setAssignments(profile.trainerId ? await listMyAssignments(profile.uid) : []);
+  }, [profile]);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useEffect(() => { if (link) setCode(link.code); }, [link]);
+
+  const sync = async (useCode: string) => {
+    if (!profile) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const joining = !profile.trainerId;
+      const r = await syncWithTrainer(profile, useCode);
+      await refresh();
+      await load();
+      setEditingCode(false);
+      scheduleCoachSyncReminder(r.trainerName).catch(() => undefined);
+      Alert.alert(
+        joining ? 'You are in!' : 'Synced',
+        joining
+          ? `You joined ${r.trainerName}'s team. ${r.plans} plan${r.plans === 1 ? '' : 's'} ready.`
+          : `${r.plans} plan${r.plans === 1 ? '' : 's'} up to date. ${r.trainerName} now has your ${r.sent} finished workouts.`,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not sync.');
+      await refresh();
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const becomeTrainer = () =>
+    Alert.alert('Use this phone as a trainer?', 'You will be able to add students and assign plans. Switch back anytime.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Switch', onPress: async () => { if (profile) { await updateUserDoc(profile.uid, { role: 'trainer' }); await refresh(); } } },
+    ]);
+
+  if (!profile) return <Loading />;
+
+  if (!profile.trainerId) {
+    return (
+      <Screen>
+        <Txt variant="h1">Coach</Txt>
+        <Card style={{ marginTop: spacing.lg }}>
+          <Txt variant="h2">Join your coach</Txt>
+          <Txt dim style={{ marginTop: 6, marginBottom: spacing.lg }}>
+            Ask your trainer to tap "Share with students". Join the same Wi-Fi or their hotspot, then enter the 10-character code.
+          </Txt>
+          <ErrorText message={error} />
+          <Field
+            placeholder="K7Q2M-9XA3F"
+            value={code}
+            onChangeText={(t) => setCode(t.toUpperCase())}
+            autoCapitalize="characters"
+            maxLength={11}
+            style={{ fontSize: 22, letterSpacing: 3, textAlign: 'center', fontWeight: '800' }}
+          />
+          <Button title="Join" icon="enter" onPress={() => sync(code)} loading={busy} disabled={code.replace(/[^0-9A-Z]/gi, '').length < 10} />
+          {busy ? <Txt variant="caption" muted center style={{ marginTop: spacing.sm }}>Waiting for your trainer to accept…</Txt> : null}
+        </Card>
+        {AppConfig.features.allowTrainerSignup ? (
+          <Card style={{ marginTop: spacing.md }}>
+            <ListRow icon="people" iconColor={c.accent} title="I am a trainer" subtitle="Use this phone to coach students" onPress={becomeTrainer} />
+          </Card>
+        ) : null}
+        <BannerAdSlot placement="coach" />
+      </Screen>
+    );
+  }
+
+  const workouts = assignments?.filter((a) => a.type === 'workout') ?? [];
+  const meals = assignments?.filter((a) => a.type === 'meal') ?? [];
+  const daysSince = link ? Math.floor((Date.now() - link.lastSyncAt) / 86400000) : null;
+
+  return (
+    <Screen>
+      <Txt variant="label" muted>Your coach</Txt>
+      <Txt variant="h1">{profile.trainerName ?? 'Coach'}</Txt>
+      <Card style={{ marginTop: spacing.lg }} tint={daysSince !== null && daysSince >= 7 ? c.warning + '22' : undefined}>
+        <Row>
+          <Ionicons name="sync" size={22} color={c.primary} />
+          <View style={{ flex: 1 }}>
+            <Txt variant="h3">Sync with your coach</Txt>
+            <Txt variant="small" muted>
+              {daysSince === null ? 'Not synced yet' : daysSince === 0 ? 'Last synced today' : `Last synced ${daysSince} day${daysSince === 1 ? '' : 's'} ago`}
+            </Txt>
+          </View>
+        </Row>
+        <ErrorText message={error} />
+        {editingCode ? (
+          <Field
+            placeholder="New code from your coach"
+            value={code}
+            onChangeText={(t) => setCode(t.toUpperCase())}
+            autoCapitalize="characters"
+            maxLength={11}
+            style={{ fontSize: 18, letterSpacing: 2, textAlign: 'center', fontWeight: '800', marginTop: spacing.md }}
+          />
+        ) : null}
+        <Row style={{ marginTop: spacing.md }}>
+          <Button title="Sync now" icon="sync" small loading={busy} onPress={() => sync(code)} disabled={code.replace(/[^0-9A-Z]/gi, '').length < 10} style={{ flex: 1 }} />
+          <Button title={editingCode ? 'Cancel' : 'New code'} small variant="secondary" onPress={() => setEditingCode((v) => !v)} style={{ flex: 1 }} />
+        </Row>
+        <Txt variant="caption" muted style={{ marginTop: spacing.sm }}>
+          Your coach turns on sharing; you both need the same Wi-Fi or their hotspot. If the code changed, tap New code.
+        </Txt>
+      </Card>
+
+      <SectionHeader title="Workout plans" />
+      {workouts.length === 0 ? (
+        <Card><Txt dim>No workout plan yet. Sync after your coach assigns one.</Txt></Card>
+      ) : (
+        workouts.map((a) => (
+          <Card key={a.id} style={{ marginBottom: spacing.md }} onPress={() => router.push({ pathname: '/student/plan/[id]', params: { id: a.id } })}>
+            <Row>
+              <Ionicons name="barbell" size={22} color={c.primary} />
+              <View style={{ flex: 1 }}>
+                <Txt variant="h3">{a.title}</Txt>
+                <Txt variant="small" muted>{a.workoutPlan?.days.length ?? 0} days · from {a.startDate}</Txt>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
+            </Row>
+            {a.note ? <Txt variant="small" color={c.primary} style={{ marginTop: spacing.sm }}>“{a.note}”</Txt> : null}
+          </Card>
+        ))
+      )}
+      <SectionHeader title="Meal plans" />
+      {meals.length === 0 ? (
+        <Card><Txt dim>No meal plan yet.</Txt></Card>
+      ) : (
+        meals.map((a) => (
+          <Card key={a.id} style={{ marginBottom: spacing.md }} onPress={() => router.push({ pathname: '/student/meal/[id]', params: { id: a.id } })}>
+            <Row>
+              <Ionicons name="restaurant" size={22} color={c.accent} />
+              <View style={{ flex: 1 }}>
+                <Txt variant="h3">{a.title}</Txt>
+                <Txt variant="small" muted>{a.mealPlan?.targetCalories ? `${a.mealPlan.targetCalories} kcal/day · ` : ''}{a.mealPlan?.days.length ?? 0} days</Txt>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
+            </Row>
+          </Card>
+        ))
+      )}
+      <BannerAdSlot placement="coach" />
+      <Button
+        title="Remove this coach"
+        variant="ghost"
+        style={{ marginTop: spacing.xl }}
+        onPress={() =>
+          Alert.alert('Remove your coach?', 'Their plans will be removed from this phone. You can join again with a new code.', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Remove',
+              style: 'destructive',
+              onPress: async () => {
+                await unlinkTrainer(profile);
+                cancelCoachSyncReminder().catch(() => undefined);
+                await refresh();
+                await load();
+              },
+            },
+          ])
+        }
+      />
+    </Screen>
+  );
+}
+
+function CloudStudentView() {
   const c = useColors();
   const router = useRouter();
   const { profile, refresh } = useAuth();

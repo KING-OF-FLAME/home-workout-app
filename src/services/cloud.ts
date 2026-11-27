@@ -1,5 +1,6 @@
 /**
- * Firestore data layer for accounts and the trainer ⇄ student features.
+ * Data layer for accounts and the trainer ⇄ student features. Runs on
+ * Firestore when Firebase is configured, otherwise on this phone (see docstore.ts).
  * Collections (see firestore.rules for who can read/write what):
  *   users/{uid}
  *   invites/{code}
@@ -7,22 +8,9 @@
  *   workoutPlans/{id}   mealPlans/{id}
  *   assignments/{id}    completions/{id}
  */
-import {
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  setDoc,
-  updateDoc,
-  where,
-  writeBatch,
-  type Firestore,
-} from 'firebase/firestore';
 import type { Level, Workout } from '@/data/types';
-import { firebase } from '@/lib/firebase';
 import { inviteCode, uid as makeId } from '@/lib/id';
+import { store, type BatchOp } from './docstore';
 
 export type Role = 'member' | 'trainer';
 
@@ -123,37 +111,22 @@ export interface Completion {
   completedAt: number;
 }
 
-function db(): Firestore {
-  const fb = firebase();
-  if (!fb) throw new Error('Cloud features are not set up. Add your Firebase keys to config/app-config.json.');
-  return fb.db;
-}
-
-/** Firestore rejects `undefined`; strip it. */
-function clean<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value));
-}
-
-async function list<T>(q: ReturnType<typeof query>): Promise<T[]> {
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => d.data() as T);
-}
-
 // ---------------- Users ----------------
 
+const sortBy = <T>(items: T[], key: (x: T) => number, desc = true) => items.sort((a, b) => (desc ? key(b) - key(a) : key(a) - key(b)));
+
 export async function getUserDoc(id: string): Promise<UserDoc | null> {
-  const snap = await getDoc(doc(db(), 'users', id));
-  return snap.exists() ? (snap.data() as UserDoc) : null;
+  return store().get<UserDoc>(`users/${id}`);
 }
 
 export async function createUserDoc(u: { uid: string; displayName: string; email: string; role: Role }): Promise<UserDoc> {
   const data: UserDoc = { ...u, trainerId: null, trainerName: null, createdAt: Date.now() };
-  await setDoc(doc(db(), 'users', u.uid), data);
+  await store().set(`users/${u.uid}`, data);
   return data;
 }
 
 export async function updateUserDoc(id: string, patch: Partial<Pick<UserDoc, 'displayName' | 'role' | 'trainerId' | 'trainerName'>>) {
-  await updateDoc(doc(db(), 'users', id), clean(patch));
+  await store().update(`users/${id}`, patch);
 }
 
 // ---------------- Invites & roster ----------------
@@ -162,122 +135,111 @@ export async function createInvite(trainer: UserDoc): Promise<Invite> {
   // Retry on the (very unlikely) chance the code exists.
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = inviteCode();
-    const ref = doc(db(), 'invites', code);
-    const existing = await getDoc(ref).catch(() => null);
-    if (existing?.exists()) continue;
+    const existing = await store().get<Invite>(`invites/${code}`).catch(() => null);
+    if (existing) continue;
     const invite: Invite = { code, trainerId: trainer.uid, trainerName: trainer.displayName, used: false, createdAt: Date.now() };
-    await setDoc(ref, invite);
+    await store().set(`invites/${code}`, invite);
     return invite;
   }
   throw new Error('Could not create an invite code. Please try again.');
 }
 
 export async function listInvites(trainerId: string): Promise<Invite[]> {
-  const items = await list<Invite>(query(collection(db(), 'invites'), where('trainerId', '==', trainerId)));
-  return items.sort((a, b) => b.createdAt - a.createdAt);
+  return sortBy(await store().query<Invite>('invites', [['trainerId', trainerId]]), (i) => i.createdAt);
 }
 
 export async function deleteInvite(code: string) {
-  await deleteDoc(doc(db(), 'invites', code));
+  await store().remove(`invites/${code}`);
 }
 
-/** Student joins a trainer with a code. Returns the trainer's name. */
+/** Student joins a trainer with a code (cloud mode). Returns the trainer's name. */
 export async function redeemInvite(rawCode: string, student: UserDoc): Promise<string> {
   const code = rawCode.trim().toUpperCase();
   if (!code) throw new Error('Enter the code your trainer gave you.');
-  const ref = doc(db(), 'invites', code);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error('That code was not found. Check it with your trainer.');
-  const invite = snap.data() as Invite;
+  const invite = await store().get<Invite>(`invites/${code}`);
+  if (!invite) throw new Error('That code was not found. Check it with your trainer.');
   if (invite.used) throw new Error('This code has already been used. Ask your trainer for a new one.');
   if (invite.trainerId === student.uid) throw new Error('You cannot join your own team.');
-
-  const batch = writeBatch(db());
-  batch.update(ref, { used: true, usedBy: student.uid, usedAt: Date.now() });
-  const entry: RosterEntry = {
-    studentId: student.uid,
-    name: student.displayName,
-    email: student.email,
-    inviteCode: code,
-    joinedAt: Date.now(),
-  };
-  batch.set(doc(db(), 'rosters', invite.trainerId, 'students', student.uid), entry);
-  batch.update(doc(db(), 'users', student.uid), { trainerId: invite.trainerId, trainerName: invite.trainerName });
-  await batch.commit();
+  const entry: RosterEntry = { studentId: student.uid, name: student.displayName, email: student.email, inviteCode: code, joinedAt: Date.now() };
+  await store().batch([
+    { op: 'update', path: `invites/${code}`, data: { used: true, usedBy: student.uid, usedAt: Date.now() } },
+    { op: 'set', path: `rosters/${invite.trainerId}/students/${student.uid}`, data: entry },
+    { op: 'update', path: `users/${student.uid}`, data: { trainerId: invite.trainerId, trainerName: invite.trainerName } },
+  ]);
   return invite.trainerName;
 }
 
 export async function listStudents(trainerId: string): Promise<RosterEntry[]> {
-  const items = await list<RosterEntry>(query(collection(db(), 'rosters', trainerId, 'students')));
+  const items = await store().query<RosterEntry>(`rosters/${trainerId}/students`);
   return items.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function getRosterEntry(trainerId: string, studentId: string): Promise<RosterEntry | null> {
-  const snap = await getDoc(doc(db(), 'rosters', trainerId, 'students', studentId));
-  return snap.exists() ? (snap.data() as RosterEntry) : null;
+  return store().get<RosterEntry>(`rosters/${trainerId}/students/${studentId}`);
+}
+
+export async function addRosterEntry(trainerId: string, entry: RosterEntry) {
+  await store().set(`rosters/${trainerId}/students/${entry.studentId}`, entry);
 }
 
 export async function updateStudentNote(trainerId: string, studentId: string, note: string) {
-  await updateDoc(doc(db(), 'rosters', trainerId, 'students', studentId), { note });
+  await store().update(`rosters/${trainerId}/students/${studentId}`, { note });
 }
 
 export async function removeStudent(trainerId: string, studentId: string) {
   const assignments = await listAssignmentsForStudent(trainerId, studentId);
-  const batch = writeBatch(db());
-  assignments.filter((a) => a.active).forEach((a) => batch.update(doc(db(), 'assignments', a.id), { active: false, updatedAt: Date.now() }));
-  batch.delete(doc(db(), 'rosters', trainerId, 'students', studentId));
-  await batch.commit();
+  const ops: BatchOp[] = assignments
+    .filter((a) => a.active)
+    .map((a) => ({ op: 'update', path: `assignments/${a.id}`, data: { active: false, updatedAt: Date.now() } }));
+  ops.push({ op: 'delete', path: `rosters/${trainerId}/students/${studentId}` });
+  await store().batch(ops);
 }
 
 /** Student leaves their trainer. */
 export async function leaveTrainer(student: UserDoc) {
   if (!student.trainerId) return;
-  const batch = writeBatch(db());
-  batch.delete(doc(db(), 'rosters', student.trainerId, 'students', student.uid));
-  batch.update(doc(db(), 'users', student.uid), { trainerId: null, trainerName: null });
-  await batch.commit();
+  await store().batch([
+    { op: 'delete', path: `rosters/${student.trainerId}/students/${student.uid}` },
+    { op: 'update', path: `users/${student.uid}`, data: { trainerId: null, trainerName: null } },
+  ]);
 }
 
 // ---------------- Workout & meal plans ----------------
 
 export async function listWorkoutPlans(trainerId: string): Promise<WorkoutPlan[]> {
-  const items = await list<WorkoutPlan>(query(collection(db(), 'workoutPlans'), where('trainerId', '==', trainerId)));
-  return items.sort((a, b) => b.updatedAt - a.updatedAt);
+  return sortBy(await store().query<WorkoutPlan>('workoutPlans', [['trainerId', trainerId]]), (p) => p.updatedAt);
 }
 
 export async function getWorkoutPlan(id: string): Promise<WorkoutPlan | null> {
-  const snap = await getDoc(doc(db(), 'workoutPlans', id));
-  return snap.exists() ? (snap.data() as WorkoutPlan) : null;
+  return store().get<WorkoutPlan>(`workoutPlans/${id}`);
 }
 
 export async function saveWorkoutPlan(plan: Omit<WorkoutPlan, 'id' | 'updatedAt'> & { id?: string }): Promise<WorkoutPlan> {
   const full: WorkoutPlan = { ...plan, id: plan.id ?? makeId('wp_'), updatedAt: Date.now() };
-  await setDoc(doc(db(), 'workoutPlans', full.id), clean(full));
+  await store().set(`workoutPlans/${full.id}`, full);
   return full;
 }
 
 export async function deleteWorkoutPlan(id: string) {
-  await deleteDoc(doc(db(), 'workoutPlans', id));
+  await store().remove(`workoutPlans/${id}`);
 }
 
 export async function listMealPlans(trainerId: string): Promise<MealPlan[]> {
-  const items = await list<MealPlan>(query(collection(db(), 'mealPlans'), where('trainerId', '==', trainerId)));
-  return items.sort((a, b) => b.updatedAt - a.updatedAt);
+  return sortBy(await store().query<MealPlan>('mealPlans', [['trainerId', trainerId]]), (p) => p.updatedAt);
 }
 
 export async function getMealPlan(id: string): Promise<MealPlan | null> {
-  const snap = await getDoc(doc(db(), 'mealPlans', id));
-  return snap.exists() ? (snap.data() as MealPlan) : null;
+  return store().get<MealPlan>(`mealPlans/${id}`);
 }
 
 export async function saveMealPlan(plan: Omit<MealPlan, 'id' | 'updatedAt'> & { id?: string }): Promise<MealPlan> {
   const full: MealPlan = { ...plan, id: plan.id ?? makeId('mp_'), updatedAt: Date.now() };
-  await setDoc(doc(db(), 'mealPlans', full.id), clean(full));
+  await store().set(`mealPlans/${full.id}`, full);
   return full;
 }
 
 export async function deleteMealPlan(id: string) {
-  await deleteDoc(doc(db(), 'mealPlans', id));
+  await store().remove(`mealPlans/${id}`);
 }
 
 export function mealDayTotals(day: MealDay) {
@@ -315,7 +277,7 @@ export async function assignPlan(input: {
     createdAt: now,
     updatedAt: now,
   };
-  await setDoc(doc(db(), 'assignments', a.id), clean(a));
+  await store().set(`assignments/${a.id}`, a);
   return a;
 }
 
@@ -323,79 +285,61 @@ export async function assignPlan(input: {
 export async function refreshAssignment(a: Assignment) {
   const latest = a.type === 'workout' ? await getWorkoutPlan(a.planId) : await getMealPlan(a.planId);
   if (!latest) throw new Error('The original plan was deleted.');
-  await updateDoc(
-    doc(db(), 'assignments', a.id),
-    clean({ title: latest.name, [a.type === 'workout' ? 'workoutPlan' : 'mealPlan']: latest, updatedAt: Date.now() }),
-  );
+  await store().update(`assignments/${a.id}`, { title: latest.name, [a.type === 'workout' ? 'workoutPlan' : 'mealPlan']: latest, updatedAt: Date.now() });
 }
 
 export async function setAssignmentActive(id: string, active: boolean) {
-  await updateDoc(doc(db(), 'assignments', id), { active, updatedAt: Date.now() });
+  await store().update(`assignments/${id}`, { active, updatedAt: Date.now() });
 }
 
 export async function deleteAssignment(id: string) {
-  await deleteDoc(doc(db(), 'assignments', id));
+  await store().remove(`assignments/${id}`);
 }
 
 export async function listAssignmentsForStudent(trainerId: string, studentId: string): Promise<Assignment[]> {
-  const items = await list<Assignment>(
-    query(collection(db(), 'assignments'), where('trainerId', '==', trainerId), where('studentId', '==', studentId)),
-  );
-  return items.sort((a, b) => b.createdAt - a.createdAt);
+  return sortBy(await store().query<Assignment>('assignments', [['trainerId', trainerId], ['studentId', studentId]]), (a) => a.createdAt);
 }
 
 export async function listMyAssignments(studentId: string): Promise<Assignment[]> {
-  const items = await list<Assignment>(query(collection(db(), 'assignments'), where('studentId', '==', studentId)));
-  return items.filter((a) => a.active).sort((a, b) => b.createdAt - a.createdAt);
+  const items = await store().query<Assignment>('assignments', [['studentId', studentId]]);
+  return sortBy(items.filter((a) => a.active), (a) => a.createdAt);
 }
 
 export async function getAssignment(id: string): Promise<Assignment | null> {
-  const snap = await getDoc(doc(db(), 'assignments', id));
-  return snap.exists() ? (snap.data() as Assignment) : null;
+  return store().get<Assignment>(`assignments/${id}`);
 }
 
 // ---------------- Completions (progress the trainer can see) ----------------
 
 export async function logCompletion(c: Omit<Completion, 'id'>): Promise<void> {
   const id = makeId('c_');
-  await setDoc(doc(db(), 'completions', id), clean({ ...c, id }));
+  await store().set(`completions/${id}`, { ...c, id });
 }
 
 export async function listCompletionsForStudent(trainerId: string, studentId: string): Promise<Completion[]> {
-  const items = await list<Completion>(
-    query(collection(db(), 'completions'), where('trainerId', '==', trainerId), where('studentId', '==', studentId)),
-  );
-  return items.sort((a, b) => b.completedAt - a.completedAt);
+  return sortBy(await store().query<Completion>('completions', [['trainerId', trainerId], ['studentId', studentId]]), (c) => c.completedAt);
 }
 
 export async function listMyCompletions(studentId: string): Promise<Completion[]> {
-  const items = await list<Completion>(query(collection(db(), 'completions'), where('studentId', '==', studentId)));
-  return items.sort((a, b) => b.completedAt - a.completedAt);
+  return sortBy(await store().query<Completion>('completions', [['studentId', studentId]]), (c) => c.completedAt);
 }
 
 // ---------------- Account deletion (required by Google Play) ----------------
 
 export async function deleteAccountData(user: UserDoc) {
-  const d = db();
-  const batchDelete = async (refs: { path: string }[]) => {
-    for (let i = 0; i < refs.length; i += 400) {
-      const batch = writeBatch(d);
-      refs.slice(i, i + 400).forEach((r) => batch.delete(doc(d, r.path)));
-      await batch.commit();
-    }
-  };
-  const paths = async (q: ReturnType<typeof query>) => (await getDocs(q)).docs.map((x) => ({ path: x.ref.path }));
-
-  const refs: { path: string }[] = [];
-  refs.push(...(await paths(query(collection(d, 'completions'), where('studentId', '==', user.uid)))));
-  if (user.trainerId) refs.push({ path: `rosters/${user.trainerId}/students/${user.uid}` });
+  const s = store();
+  const paths: string[] = [];
+  const add = (col: string, items: { id?: string; code?: string; studentId?: string }[], key: 'id' | 'code' | 'studentId') =>
+    items.forEach((x) => paths.push(`${col}/${x[key]}`));
+  add('completions', await s.query<Completion>('completions', [['studentId', user.uid]]), 'id');
+  if (user.trainerId) paths.push(`rosters/${user.trainerId}/students/${user.uid}`);
   if (user.role === 'trainer') {
-    refs.push(...(await paths(query(collection(d, 'workoutPlans'), where('trainerId', '==', user.uid)))));
-    refs.push(...(await paths(query(collection(d, 'mealPlans'), where('trainerId', '==', user.uid)))));
-    refs.push(...(await paths(query(collection(d, 'assignments'), where('trainerId', '==', user.uid)))));
-    refs.push(...(await paths(query(collection(d, 'invites'), where('trainerId', '==', user.uid)))));
-    refs.push(...(await paths(query(collection(d, 'rosters', user.uid, 'students')))));
+    add('workoutPlans', await s.query<WorkoutPlan>('workoutPlans', [['trainerId', user.uid]]), 'id');
+    add('mealPlans', await s.query<MealPlan>('mealPlans', [['trainerId', user.uid]]), 'id');
+    add('assignments', await s.query<Assignment>('assignments', [['trainerId', user.uid]]), 'id');
+    add('invites', await s.query<Invite>('invites', [['trainerId', user.uid]]), 'code');
+    add(`rosters/${user.uid}/students`, await s.query<RosterEntry>(`rosters/${user.uid}/students`), 'studentId');
   }
-  refs.push({ path: `users/${user.uid}` });
-  await batchDelete(refs);
+  paths.push(`users/${user.uid}`);
+  await s.batch(paths.map((path) => ({ op: 'delete' as const, path })));
 }

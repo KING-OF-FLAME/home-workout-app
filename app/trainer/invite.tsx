@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Share, View } from 'react-native';
 import { Button, Card, Divider, ErrorText, Loading, Row, Screen, SectionHeader, Txt } from '@/components/ui';
@@ -10,6 +10,10 @@ import { friendlyAuthError, useAuth } from '@/store/AuthStore';
 import { radius, spacing } from '@/theme';
 
 export default function InviteStudents() {
+  return useAuth().offline ? <Redirect href="/trainer/share" /> : <CloudInvites />;
+}
+
+function CloudInvites() {
   const c = useColors();
   const { profile } = useAuth();
   const [invites, setInvites] = useState<Invite[] | null>(null);
