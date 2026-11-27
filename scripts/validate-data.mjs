@@ -6,6 +6,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { MUSCLE_INFO, BODY_LABEL } from '../src/data/muscles.ts';
 import { planWorkout, totalSessions } from '../src/lib/planGenerator.ts';
 import { estimateMinutes } from '../src/lib/workout.ts';
+import { MOVES } from '../src/animation/moves.ts';
+import { prepare, sample, timeline, VIEW_W, VIEW_H } from '../src/animation/skeleton.ts';
 
 const errors = [];
 const ids = new Set();
@@ -52,6 +54,20 @@ for (const [, id, f0, f1] of media.matchAll(/'([a-z0-9-]+)': \[require\('([^']+)
   for (const f of [f0, f1]) if (!existsSync(new URL(f.replace('../../', '../'), import.meta.url))) errors.push(`exerciseMedia.ts: missing file ${f}`);
 }
 
+// Every exercise needs an animated demo that stays inside the frame.
+for (const e of EXERCISES) {
+  const mv = MOVES[e.id];
+  if (!mv) { errors.push(`${e.id}: no animation in animation/moves.ts`); continue; }
+  const prep = prepare(mv.frames, mv.view);
+  const tl = timeline(mv.frames);
+  for (let t = 0; t < tl.total; t += 50) {
+    const { points } = sample(prep, tl, t, mv.view);
+    const bad = Object.entries(points).find(([, [x, y]]) => !Number.isFinite(x) || x < 2 || x > VIEW_W - 2 || y < 2 || y > VIEW_H);
+    if (bad) { errors.push(`${e.id}: ${bad[0]} leaves the frame at ${t} ms (${bad[1].map(Math.round)})`); break; }
+  }
+}
+for (const id of Object.keys(MOVES)) if (!EXERCISE_MAP[id]) errors.push(`moves.ts: unknown exercise "${id}"`);
+
 // Personal plans: every combination must give valid workouts of about the chosen length.
 let plans = 0;
 for (const goal of ['lose_weight', 'build_muscle', 'get_fit', 'flexibility'])
@@ -76,4 +92,4 @@ if (errors.length) {
   console.error(`✖ ${errors.length} problem(s):\n` + errors.map((e) => '  - ' + e).join('\n'));
   process.exit(1);
 }
-console.log(`✔ ${EXERCISES.length} exercises (${demos} with demo photos), ${PROGRAMS.length} programs, ${QUICK_WORKOUTS.length} quick workouts, ${plans} plan setups look good.`);
+console.log(`✔ ${EXERCISES.length} exercises (all animated, ${demos} with demo photos), ${PROGRAMS.length} programs, ${QUICK_WORKOUTS.length} quick workouts, ${plans} plan setups look good.`);

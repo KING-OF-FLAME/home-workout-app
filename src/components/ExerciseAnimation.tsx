@@ -6,30 +6,43 @@ import { muscleInfo } from '@/data/muscles';
 import type { Exercise } from '@/data/types';
 import { useColors } from '@/store/AppStore';
 import { muscleColors, radius } from '@/theme';
+import { ExerciseFigure, hasFigure } from './ExerciseFigure';
 import { MuscleMap } from './MuscleMap';
 import { Txt } from './ui';
 
+/** True when real start/finish photos exist for this exercise. */
 export function hasDemo(id: string): boolean {
   return Boolean(EXERCISE_FRAMES[id]);
 }
 
 /**
- * Looping demo of an exercise: real photos of the start and end position
- * crossfade like a slow animation. Exercises without photos show an animated
- * body map of the muscles they train instead, never a wrong demo.
+ * Exercise demo. By default an animated figure performs the move with the
+ * worked muscles glowing. With `photo`, real start and finish photos crossfade
+ * instead (for exercises that have them).
  */
 export function ExerciseAnimation({
   exercise,
   width,
   playing = true,
   speed = 1,
+  photo = false,
+  showCue = true,
 }: {
   exercise: Exercise;
   width: number;
   playing?: boolean;
-  /** 1 = normal tempo, higher is faster. */
+  /** 1 = normal tempo, lower is slower. */
   speed?: number;
+  photo?: boolean;
+  showCue?: boolean;
 }) {
+  if (!(photo && EXERCISE_FRAMES[exercise.id]) && hasFigure(exercise.id)) {
+    return <ExerciseFigure exerciseId={exercise.id} width={width} playing={playing} speed={speed} showCue={showCue} />;
+  }
+  return <PhotoDemo exercise={exercise} width={width} playing={playing} speed={speed} />;
+}
+
+function PhotoDemo({ exercise, width, playing, speed }: { exercise: Exercise; width: number; playing: boolean; speed: number }) {
   const c = useColors();
   const frames = EXERCISE_FRAMES[exercise.id];
   const fade = useRef(new Animated.Value(0)).current;

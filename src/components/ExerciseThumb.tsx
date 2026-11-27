@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image, View } from 'react-native';
 import { EXERCISE_FRAMES } from '@/data/exerciseMedia';
+import { ExerciseFigure, hasFigure } from './ExerciseFigure';
 import type { Exercise, MuscleGroup } from '@/data/types';
 import { muscleColors, radius } from '@/theme';
 import type { IconName } from './ui';
@@ -24,6 +25,13 @@ export function ExerciseThumb({ exercise, size = 52 }: { exercise: Exercise; siz
   const frames = EXERCISE_FRAMES[exercise.id];
   if (frames) {
     return <Image source={frames[1]} style={{ width: size, height: size, borderRadius: radius.md, backgroundColor: '#fff' }} resizeMode="cover" />;
+  }
+  if (hasFigure(exercise.id)) {
+    return (
+      <View style={{ width: size, height: size, borderRadius: radius.md, backgroundColor: color + '1F', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        <ExerciseFigure exerciseId={exercise.id} width={size * 1.25} playing={false} showCue={false} showMuscles={false} background="transparent" rounded={false} />
+      </View>
+    );
   }
   if (exercise.media) {
     return <Image source={{ uri: exercise.media }} style={{ width: size, height: size, borderRadius: radius.md, backgroundColor: color + '33' }} />;

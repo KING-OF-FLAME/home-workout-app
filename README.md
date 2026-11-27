@@ -39,7 +39,9 @@ It has two sides:
 - "My plan" screen (week by week, done / next), Today card with Day X of N; change or delete the plan anytime
 
 **Exercise demos and body map**
-- Real photo demos (start and end position looping like an animation, with pause and slow motion) for 43 exercises; the rest show an animated muscle map instead of a wrong demo
+- Animated demo for every one of the 65 exercises: a figure drawn in code performs the move in a loop, the worked muscles glow, and a cue under it says what to do at each moment (pause and slow motion). No video files, so the template can be resold without licence problems
+- Real photo demos (start and end position) for 43 exercises, one tap away from the animation
+- "What to expect" timeline on each exercise (general guidance, never promised results)
 - Animated front/back body map on every exercise, on the workout preview, after each workout, and a weekly muscle heat map on Progress
 - Breathing cue, common mistakes and "what it improves" for every exercise
 
@@ -239,7 +241,8 @@ Checklist for a new app:
 
 ## Customising content
 
-- **Exercise demos**: photos live in `assets/exercises/<exercise-id>-0.jpg` (start) and `-1.jpg` (end), listed in `src/data/exerciseMedia.ts`. Add a pair and a line there to give another exercise a demo. To use your own licensed GIFs or videos instead, replace `ExerciseAnimation` in `src/components/ExerciseAnimation.tsx`.
+- **Exercise animations**: `src/animation/moves.ts` describes each move as a few key poses (joint angles), with cues and timing. `npm run validate-data` checks that every exercise has one and that the figure stays in the frame. The figure is drawn by `src/components/ExerciseFigure.tsx`.
+- **Exercise photos**: photos live in `assets/exercises/<exercise-id>-0.jpg` (start) and `-1.jpg` (end), listed in `src/data/exerciseMedia.ts`. Add a pair and a line there to give another exercise a demo. To use your own licensed GIFs or videos instead, replace `ExerciseAnimation` in `src/components/ExerciseAnimation.tsx`.
 - **Muscles and mistakes**: `src/data/muscles.ts` (body regions per exercise, common mistakes, benefits shown on the body map).
 - **Personal plan rules**: `src/lib/planGenerator.ts` (plan lengths, day types per goal, minutes to volume, phases and progression).
 - **Exercises**: `src/data/exercises.ts`. Each has steps, muscles, equipment (`none`, `mat`, `chair`, `wall`), level, mode (`reps` or `time`), defaults and a MET value. To show images or GIFs, set `media` to an image URL.

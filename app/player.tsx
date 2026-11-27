@@ -285,7 +285,7 @@ export default function Player() {
             <ExerciseAnimation
               key={shown.id}
               exercise={shown}
-              width={Math.max(180, Math.min(screenWidth - spacing.lg * 2, (screenHeight - 420) * 1.5, isRest ? 260 : 380))}
+              width={Math.max(180, Math.min(screenWidth - spacing.lg * 2, (screenHeight - 470) * 1.33, isRest ? 260 : 380))}
               playing={!paused}
             />
           </View>

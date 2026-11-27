@@ -23,6 +23,7 @@ export default function ExerciseDetail() {
   const { id, fromPlayer } = useLocalSearchParams<{ id: string; fromPlayer?: string }>();
   const [playing, setPlaying] = useState(true);
   const [slow, setSlow] = useState(false);
+  const [photo, setPhoto] = useState(false);
   const ex = getExercise(id);
   if (!ex) return <EmptyState icon="alert-circle" title="Exercise not found" />;
   const info = muscleInfo(ex);
@@ -34,14 +35,13 @@ export default function ExerciseDetail() {
     <Screen edges={['bottom']}>
       <Stack.Screen options={{ title: ex.name }} />
       <View style={{ alignItems: 'center', paddingTop: spacing.sm }}>
-        <ExerciseAnimation exercise={ex} width={width - spacing.lg * 2} playing={playing} speed={slow ? 0.55 : 1} />
+        <ExerciseAnimation exercise={ex} width={width - spacing.lg * 2} playing={playing} speed={slow ? 0.45 : 1} photo={photo} />
       </View>
-      {demo ? (
-        <Row style={{ justifyContent: 'center', marginTop: spacing.sm }}>
-          <Chip icon={playing ? 'pause' : 'play'} label={playing ? 'Pause' : 'Play'} onPress={() => setPlaying((p) => !p)} />
-          <Chip icon="speedometer-outline" label={slow ? 'Normal speed' : 'Slow motion'} active={slow} onPress={() => setSlow((s) => !s)} />
-        </Row>
-      ) : null}
+      <Row style={{ justifyContent: 'center', marginTop: spacing.sm, flexWrap: 'wrap' }}>
+        <Chip icon={playing ? 'pause' : 'play'} label={playing ? 'Pause' : 'Play'} onPress={() => setPlaying((p) => !p)} />
+        <Chip icon="speedometer-outline" label="Slow motion" active={slow} onPress={() => setSlow((s) => !s)} />
+        {demo ? <Chip icon={photo ? 'body-outline' : 'image-outline'} label={photo ? 'Animation' : 'Real photos'} onPress={() => setPhoto((p) => !p)} /> : null}
+      </Row>
 
       <Txt variant="h1" center style={{ marginTop: spacing.md }}>
         {ex.name}
@@ -157,7 +157,7 @@ export default function ExerciseDetail() {
           Speech.speak(`${ex.name}. ${ex.steps.join(' ')} ${breathing} ${ex.tip ?? ''}`);
         }}
       />
-      {demo ? (
+      {demo && photo ? (
         <Txt variant="caption" muted center style={{ marginTop: spacing.md }}>
           Demo photos: Free Exercise DB (public domain)
         </Txt>
