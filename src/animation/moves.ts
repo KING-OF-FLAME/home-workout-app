@@ -11,6 +11,8 @@ export interface Prop {
 
 export interface Move {
   view: View;
+  /** Lying on the back: the front of the body faces up (side view). */
+  faceUp?: boolean;
   props?: Prop[];
   frames: Frame[];
 }
@@ -550,6 +552,187 @@ export const MOVES: Record<string, Move> = {
       F({ ...SUPINE_KNEES, thN: -125, shN: -60, thF: -125, shF: -60, uaN: 180, faN: 180, uaF: 180, faF: 180, head: 75 }, at('hip', 100), { cue: 'Let the knees fall to one side. Breathe', ms: 1400, hold: 1200 }),
     ],
   },
+
+  // ---------- More moves ----------
+  'plank-up-downs': {
+    view: 'side',
+    props: [{ kind: 'mat', x: 100 }],
+    frames: [
+      F(FOREARM_PLANK, at('toeN', 52), { level: ['handN', 'toeN'], cue: 'Start on your forearms', ms: 600, hold: 200 }),
+      F({ ...FOREARM_PLANK, uaN: 0, faN: 0 }, at('toeN', 52), { level: ['handF', 'toeN'], cue: 'Press up onto one hand', ms: 450, hold: 50 }),
+      F(PLANK, at('toeN', 52), { level: ['handN', 'toeN'], cue: 'Then the other, hips still', ms: 450, hold: 200 }),
+      F({ ...PLANK, faF: 90 }, at('toeN', 52), { level: ['handN', 'toeN'], cue: 'Lower back down one arm at a time', ms: 450, hold: 50 }),
+    ],
+  },
+  'bear-plank': {
+    view: 'side',
+    props: [{ kind: 'mat', x: 100 }],
+    frames: [
+      F(QUAD, at('kneeN', 85), { level: ['handF', 'kneeN', 0, 'torso'], cue: 'Hands and knees, toes tucked', ms: 800, hold: 200 }),
+      ...breathe({ ...QUAD, thN: 4, shN: -72, thF: 4, shF: -72, ftN: 5, ftF: 5 }, at('kneeN', 85), 'Lift knees a little. Hold, flat back', { level: ['handF', 'toeN', 0, 'torso'] }, { thN: 1, thF: 1 }),
+    ],
+  },
+  'frog-jumps': {
+    view: 'side',
+    frames: [
+      F(P({ torso: 128, head: 140, thN: 98, shN: -38, thF: 98, shF: -38, uaN: 8, faN: 8, uaF: 8, faF: 8 }), at('ankleN', 100), { cue: 'Deep squat, fingers on the floor', ms: 550, hold: 150 }),
+      F(P({ uaN: 170, faN: 175, uaF: 170, faF: 175, ftN: 40, ftF: 40 }), at('ankleN', 102), { air: 15, cue: 'Jump up, reach high', ms: 380, hold: 40 }),
+    ],
+  },
+  'tuck-jumps': {
+    view: 'side',
+    frames: [
+      F(P({ torso: 165, head: 170, thN: 35, shN: -30, thF: 35, shF: -30, uaN: -45, faN: -35, uaF: -45, faF: -35 }), at('ankleN', 100), { cue: 'Dip and swing the arms back', ms: 380, hold: 60 }),
+      F(P({ torso: 172, head: 175, thN: 112, shN: 5, thF: 112, shF: 5, ftN: 50, ftF: 50, uaN: 70, faN: 90, uaF: 70, faF: 90 }), at('hip', 100), { air: 26, cue: 'Knees to your chest', ms: 320, hold: 60 }),
+      F(P({ uaN: 20, faN: 20, uaF: 20, faF: 20 }), at('ankleN', 100), { cue: 'Land softly', ms: 320, hold: 80 }),
+    ],
+  },
+  'standing-toe-touches': {
+    view: 'side',
+    frames: [
+      F(P({ torso: 168, head: 172, thN: 78, shN: 78, ftN: 150, uaF: 80, faF: 78, uaN: -30, faN: -20 }), at('ankleF', 100), { cue: 'Kick up, opposite hand to toes', ms: 420, hold: 80 }),
+      F(P({ uaN: 40, faN: 40, uaF: 40, faF: 40 }), at('ankleF', 100), { ms: 320, hold: 0 }),
+      F(P({ torso: 168, head: 172, thF: 78, shF: 78, ftF: 150, uaN: 80, faN: 78, uaF: -30, faF: -20 }), at('ankleN', 100), { cue: 'Switch sides', ms: 420, hold: 80 }),
+      F(P({ uaN: 40, faN: 40, uaF: 40, faF: 40 }), at('ankleN', 100), { ms: 320, hold: 0 }),
+    ],
+  },
+  'reverse-crunches': {
+    view: 'side',
+    props: [{ kind: 'mat', x: 100 }],
+    frames: [
+      F(P({ ...SUPINE, thN: -180, shN: -90, thF: -180, shF: -90, ftN: -180, ftF: -180 }), at('hip', 98), { cue: 'Knees bent over your hips', ms: 800, hold: 150 }),
+      F(P({ ...SUPINE, torso: 80, head: 88, thN: -215, shN: -120, thF: -215, shF: -120, ftN: -200, ftF: -200 }), at('hip', 98), { cue: 'Curl knees to chest, hips lift', ms: 700, hold: 200 }),
+    ],
+  },
+  'wall-angels': {
+    view: 'front',
+    frames: [
+      F(P({ uaN: 95, faN: 178, uaF: 95, faF: 178 }), at('hip', 100), { cue: 'Back on the wall, arms in a W', ms: 900, hold: 200 }),
+      F(P({ uaN: 158, faN: 165, uaF: 158, faF: 165 }), at('hip', 100), { cue: 'Slide them up into a Y', ms: 1100, hold: 250 }),
+    ],
+  },
+  'prone-y-raises': {
+    view: 'side',
+    props: [{ kind: 'mat', x: 100 }],
+    frames: [
+      F({ ...PRONE, uaN: 95, faN: 95, uaF: 95, faF: 95 }, at('hip', 95), { cue: 'Face down, arms in a Y', ms: 800, hold: 150 }),
+      F({ ...PRONE, torso: 98, head: 103, uaN: 118, faN: 118, uaF: 118, faF: 118 }, at('hip', 95), { cue: 'Lift arms and chest, pause', ms: 800, hold: 500 }),
+    ],
+  },
+  'curtsy-lunges': {
+    view: 'front',
+    frames: [
+      F(P({ thN: 3, shN: 3, thF: 3, shF: 3, uaN: 25, faN: -140, uaF: 25, faF: -140 }), at('hip', 100), { cue: 'Stand tall', ms: 600, hold: 100 }),
+      F(P({ torso: 176, thN: 32, shN: -8, thF: -34, shF: -14, uaN: 25, faN: -140, uaF: 25, faF: -140 }), at('hip', 96), { cue: 'Step behind and across, sink down', ms: 800, hold: 200 }),
+      F(P({ thN: 3, shN: 3, thF: 3, shF: 3, uaN: 25, faN: -140, uaF: 25, faF: -140 }), at('hip', 100), { ms: 600, hold: 100 }),
+      F(P({ torso: 184, thF: 32, shF: -8, thN: -34, shN: -14, uaN: 25, faN: -140, uaF: 25, faF: -140 }), at('hip', 104), { cue: 'Then the other side', ms: 800, hold: 200 }),
+    ],
+  },
+  'squat-calf-raise': {
+    view: 'side',
+    frames: [
+      F(SQUAT, at('ankleN', 100), { cue: 'Squat, chest up', ms: 800, hold: 120 }),
+      F(P({ uaN: 170, faN: 175, uaF: 170, faF: 175, ftN: 42, ftF: 42 }), at('ankleN', 100), { cue: 'Stand and rise onto your toes', ms: 800, hold: 400 }),
+    ],
+  },
+  'single-leg-deadlift': {
+    view: 'side',
+    frames: [
+      F(P({ thN: 3, shN: -3 }), at('ankleN', 105), { cue: 'Stand on one leg, soft knee', ms: 700, hold: 150 }),
+      F(P({ torso: 96, head: 100, uaN: 2, faN: 2, uaF: 2, faF: 2, thN: 6, shN: -6, thF: -86, shF: -86, ftF: 0 }), at('ankleN', 105), { cue: 'Hinge forward, back leg lifts', ms: 1000, hold: 300 }),
+    ],
+  },
+  'standing-knee-to-elbow': {
+    view: 'side',
+    frames: [
+      F(P({ uaN: 140, faN: -95, uaF: 140, faF: -95 }), at('ankleF', 100), { cue: 'Hands behind your head', ms: 400, hold: 50 }),
+      F(P({ torso: 160, head: 150, uaN: 115, faN: -110, uaF: 120, faF: -100, thN: 105, shN: 5, ftN: 70 }), at('ankleF', 100), { cue: 'Knee up, elbow down to meet it', ms: 400, hold: 120 }),
+      F(P({ uaN: 140, faN: -95, uaF: 140, faF: -95 }), at('ankleN', 100), { ms: 400, hold: 50 }),
+      F(P({ torso: 160, head: 150, uaN: 120, faN: -100, uaF: 115, faF: -110, thF: 105, shF: 5, ftF: 70 }), at('ankleN', 100), { cue: 'Switch sides', ms: 400, hold: 120 }),
+    ],
+  },
+  'torso-twists': {
+    view: 'front',
+    frames: [
+      F(P({ torso: 176, head: 178, uaN: 90, faN: 92, uaF: 40, faF: -110, thN: 8, shN: 8, thF: 8, shF: 8 }), at('hip', 100), { cue: 'Turn to one side, hips forward', ms: 600, hold: 80 }),
+      F(P({ torso: 184, head: 182, uaF: 90, faF: 92, uaN: 40, faN: -110, thN: 8, shN: 8, thF: 8, shF: 8 }), at('hip', 100), { cue: 'Swing round to the other side', ms: 600, hold: 80 }),
+    ],
+  },
+  'cross-jacks': {
+    view: 'front',
+    frames: [
+      F(P({ uaN: 115, faN: 120, uaF: 115, faF: 120, thN: 20, shN: 20, thF: 20, shF: 20, ftN: 80, ftF: 80 }), at('hip', 100), { cue: 'Jump out wide, arms out', ms: 360, hold: 40 }),
+      F(P({ uaN: -28, faN: -32, uaF: -20, faF: -26, thN: -9, shN: -9, thF: -4, shF: -4, ftN: 80, ftF: 80 }), at('hip', 100), { cue: 'Jump in, cross arms and feet', ms: 360, hold: 40 }),
+    ],
+  },
+  'lateral-shuffles': {
+    view: 'front',
+    frames: [
+      F(P({ thN: 24, shN: 8, thF: 24, shF: 8, uaN: 30, faN: -100, uaF: 30, faF: -100, ftN: 80, ftF: 80 }), at('hip', 80), { cue: 'Low stance, shuffle sideways', ms: 260, hold: 30 }),
+      F(P({ thN: 12, shN: 2, thF: 12, shF: 2, uaN: 30, faN: -100, uaF: 30, faF: -100, ftN: 80, ftF: 80 }), at('hip', 100), { ms: 260, hold: 30 }),
+      F(P({ thN: 24, shN: 8, thF: 24, shF: 8, uaN: 30, faN: -100, uaF: 30, faF: -100, ftN: 80, ftF: 80 }), at('hip', 120), { cue: 'Stay low, feet never cross', ms: 260, hold: 30 }),
+      F(P({ thN: 12, shN: 2, thF: 12, shF: 2, uaN: 30, faN: -100, uaF: 30, faF: -100, ftN: 80, ftF: 80 }), at('hip', 100), { ms: 260, hold: 30 }),
+    ],
+  },
+  'downward-dog': {
+    view: 'side',
+    props: [{ kind: 'mat', x: 100 }],
+    frames: [
+      F(PLANK, at('handN', 140), { level: ['handN', 'toeN'], cue: 'Start in a high plank', ms: 900, hold: 200 }),
+      F(P({ torso: 38, head: 32, uaN: 38, faN: 38, uaF: 38, faF: 38, thN: -38, shN: -38, thF: -38, shF: -38, ftN: 55, ftF: 55 }), at('handN', 140), { level: ['handN', 'toeN'], cue: 'Hips up and back, heels down. Breathe', ms: 1200, hold: 1400 }),
+    ],
+  },
+  'butterfly-stretch': {
+    view: 'front',
+    props: [{ kind: 'mat', x: 100 }],
+    frames: [
+      F(P({ thN: 102, shN: -78, thF: 102, shF: -78, uaN: 8, faN: -25, uaF: 8, faF: -25, ftN: 0, ftF: 0 }), at('hip', 100), { cue: 'Soles together, knees out', ms: 1000, hold: 200 }),
+      F(P({ head: 175, thN: 94, shN: -86, thF: 94, shF: -86, uaN: 12, faN: -20, uaF: 12, faF: -20, ftN: 0, ftF: 0 }), at('hip', 100), { cue: 'Let the knees sink. Breathe', ms: 1200, hold: 800 }),
+    ],
+  },
+  'standing-side-bend': {
+    view: 'front',
+    frames: [
+      F(P({ uaN: 160, faN: 170, uaF: 8, faF: 8, thN: 6, shN: 6, thF: 6, shF: 6 }), at('hip', 100), { cue: 'Reach one arm up', ms: 800, hold: 150 }),
+      F(P({ torso: 162, head: 158, uaN: 200, faN: 225, uaF: 15, faF: 15, thN: 6, shN: 6, thF: 6, shF: 6 }), at('hip', 100), { cue: 'Lean to the side and hold', ms: 1000, hold: 1200 }),
+    ],
+  },
+  'shoulder-stretch': {
+    view: 'front',
+    frames: [
+      F(P({ uaN: 10, faN: 10, uaF: 10, faF: 10 }), at('hip', 100), { cue: 'Stand tall, shoulders down', ms: 800, hold: 150 }),
+      F(P({ uaN: -82, faN: -88, uaF: 25, faF: -140 }), at('hip', 100), { cue: 'Arm across the chest, hold it close', ms: 900, hold: 1300 }),
+    ],
+  },
+  'standing-glute-kickback': {
+    view: 'side',
+    frames: [
+      F(P({ torso: 174, uaN: -25, faN: 70, uaF: -25, faF: 70 }), at('ankleF', 100), { cue: 'Hands on hips, stand tall', ms: 600, hold: 120 }),
+      F(P({ torso: 168, uaN: -25, faN: 70, uaF: -25, faF: 70, thN: -38, shN: -40, ftN: 20 }), at('ankleF', 100), { cue: 'Squeeze and push the leg back', ms: 600, hold: 300 }),
+    ],
+  },
+  'good-mornings': {
+    view: 'side',
+    frames: [
+      F(P({ uaN: 140, faN: -95, uaF: 140, faF: -95 }), at('ankleN', 100), { cue: 'Hands behind your head', ms: 700, hold: 150 }),
+      F(P({ torso: 98, head: 104, uaN: 60, faN: -170, uaF: 60, faF: -170, thN: -8, shN: 4, thF: -8, shF: 4 }), at('ankleN', 100), { cue: 'Hips back, flat back, then stand', ms: 1000, hold: 200 }),
+    ],
+  },
+  'chair-hip-thrust': {
+    view: 'side',
+    props: [{ kind: 'chair', x: 28, back: 'left' }],
+    frames: [
+      F(P({ torso: -118, head: -105, uaN: -95, faN: -95, uaF: -95, faF: -95, thN: 125, shN: 5, thF: 125, shF: 5 }), at('shoulderN', 54), { level: ['shoulderN', 'toeN', SEAT + 4, 'torso'], cue: 'Upper back on the chair, feet flat', ms: 800, hold: 150 }),
+      F(P({ torso: -90, head: -95, uaN: -95, faN: -95, uaF: -95, faF: -95, thN: 90, shN: 2, thF: 90, shF: 2 }), at('shoulderN', 54), { level: ['shoulderN', 'toeN', SEAT + 4, 'torso'], cue: 'Drive the hips up, squeeze', ms: 800, hold: 400 }),
+    ],
+  },
 };
 
 export { mirror };
+
+/** Exercises done lying on the back (or with the back on a chair): drawn facing up. */
+const FACE_UP = [
+  'crunches', 'bicycle-crunches', 'leg-raises', 'dead-bug', 'flutter-kicks', 'heel-taps', 'v-ups', 'hollow-hold',
+  'glute-bridge', 'single-leg-bridge', 'figure-four', 'spinal-twist', 'reverse-crunches', 'chair-hip-thrust',
+];
+for (const id of FACE_UP) if (MOVES[id]) MOVES[id].faceUp = true;

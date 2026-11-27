@@ -7,4 +7,5 @@ export const AppConfig = raw;
 
 export const isFirebaseConfigured = Boolean(raw.firebase.apiKey && raw.firebase.projectId);
 
-export const trainerFeaturesAvailable = raw.features.trainerMode && isFirebaseConfigured;
+/** Trainer tools work offline too (phone-to-phone sync); Firebase only adds cloud accounts. */
+export const trainerFeaturesAvailable = raw.features.trainerMode;

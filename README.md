@@ -11,6 +11,8 @@ It has two sides:
 
 ---
 
+See **docs/USER_GUIDE.md** for a step-by-step guide to every feature.
+
 ## Contents
 
 1. [Features](#features)
@@ -69,9 +71,11 @@ It has two sides:
 - Daily reminder notification (inexact, no exact-alarm permission)
 - Share your result
 
-**Trainer tools** (needs Firebase)
-- Trainer and member accounts (email + password), password reset
-- Invite students with one-time codes and the system share sheet
+**Trainer tools** (fully offline: the trainer's phone is the host, no server needed)
+- No accounts needed: any phone can be a trainer or a member phone
+- Phone-to-phone sync: the trainer taps "Share & sync", gets a 10-character code (local IP + PIN), students on the same Wi-Fi or the trainer's hotspot enter it to join (trainer accepts) and later tap "Sync now" to get new plans and send finished workouts
+- Removed students lose the plans at their next sync; students can remove their coach; weekly sync reminder
+- Optional cloud mode: add Firebase keys to use email accounts, invite codes and live sync instead
 - Student roster with private notes, weekly activity, streak and total minutes
 - Workout plan builder: multiple days, any exercises, sets/reps/time/rest, per-exercise coach notes, duplicate days, start from a built-in template
 - Meal plan builder: multiple days, meals with time, foods, calories, protein, carbs, fat and notes; daily calorie target; two starter templates
@@ -154,7 +158,10 @@ Then replace the images in `assets/` (`icon.png` 1024×1024, `adaptive-icon.png`
 
 ---
 
-## Firebase setup (trainer features)
+## Firebase setup (optional cloud mode)
+
+Without Firebase keys the trainer features run fully offline with phone-to-phone sync (see docs/USER_GUIDE.md). Add keys only if you want online accounts.
+
 
 Without Firebase the app runs fully offline; the Coach tab explains that cloud features are not set up.
 

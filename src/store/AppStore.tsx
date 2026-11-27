@@ -5,6 +5,7 @@ import type { Goal, Level, Workout } from '@/data/types';
 import { dayKey, streaks } from '@/lib/dates';
 import type { MyPlan } from '@/lib/planGenerator';
 import { clearAll, load, loadList, save } from '@/lib/storage';
+import { clearLocalStore } from '@/services/docstore';
 import { palettes, type Palette } from '@/theme';
 
 export interface Profile {
@@ -256,6 +257,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
   const resetAllData = useCallback(async () => {
     await clearAll();
+    await clearLocalStore();
     setProfile(defaultProfile);
     setSettings(defaultSettings);
     setHistory([]);

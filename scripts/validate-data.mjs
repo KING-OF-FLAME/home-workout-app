@@ -7,6 +7,7 @@ import { MUSCLE_INFO, BODY_LABEL } from '../src/data/muscles.ts';
 import { planWorkout, totalSessions } from '../src/lib/planGenerator.ts';
 import { estimateMinutes } from '../src/lib/workout.ts';
 import { MOVES } from '../src/animation/moves.ts';
+import { makeCode, readCode } from '../src/services/syncCode.ts';
 import { prepare, sample, timeline, VIEW_W, VIEW_H } from '../src/animation/skeleton.ts';
 
 const errors = [];
@@ -67,6 +68,13 @@ for (const e of EXERCISES) {
   }
 }
 for (const id of Object.keys(MOVES)) if (!EXERCISE_MAP[id]) errors.push(`moves.ts: unknown exercise "${id}"`);
+
+// Sharing codes must round-trip (IP + PIN), including typos with O/I.
+for (const [ip, pin] of [['192.168.1.23', 0], ['10.0.2.15', 65535], ['172.20.10.2', 4242], ['192.168.43.1', 31337]]) {
+  const code = makeCode(ip, pin);
+  const back = readCode(code.toLowerCase());
+  if (!back || back.ip !== ip || back.pin !== pin) errors.push(`sync code ${code} does not decode back to ${ip}/${pin}`);
+}
 
 // Personal plans: every combination must give valid workouts of about the chosen length.
 let plans = 0;
