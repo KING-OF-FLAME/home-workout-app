@@ -105,9 +105,10 @@ export async function startHosting(opts: {
   const server = tcp().createServer((socket) => {
     socket.setEncoding('utf8');
     socket.setTimeout(30000, () => socket.destroy());
+    // end(data) waits for the write to finish before closing. On Android a
+    // separate write() + end() can close the socket before the reply is sent.
     const send = (r: Reply) => {
-      socket.write(JSON.stringify(r) + '\n');
-      socket.end();
+      socket.end(JSON.stringify(r) + '\n');
     };
     const onData = lineReader(
       async (line) => {

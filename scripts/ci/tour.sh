@@ -21,6 +21,10 @@ adb shell am force-stop "$PKG"
 adb shell pm clear "$PKG" >/dev/null
 swipe() { adb shell input swipe 540 1800 540 650 500; sleep 1; }
 back() { adb shell input keyevent 4; sleep 1; }
+# Open a screen by its link (no scrolling needed). $PKG is the app id.
+open_link() { adb shell am start -W -a android.intent.action.VIEW -d "fithome://$1" "$PKG" >/dev/null; sleep 3; }
+# Stop the screen recording on the phone so the mp4 is finished before it is pulled.
+stoprec() { adb shell pkill -INT screenrecord 2>/dev/null || true; kill -INT $REC 2>/dev/null || true; wait $REC 2>/dev/null || true; sleep 3; }
 
 # The video is recorded in parts (Android stops a recording after 3 minutes), then joined.
 adb shell screenrecord --time-limit 175 --bit-rate 6000000 /sdcard/tour-1.mp4 &
@@ -61,7 +65,7 @@ back; tap "Save & end"; sleep 3; shot 15-complete
 swipe; shot 16-complete-muscles
 tap "Done"; sleep 2
 
-kill -INT $REC 2>/dev/null; sleep 3
+stoprec
 adb shell screenrecord --time-limit 178 --bit-rate 6000000 /sdcard/tour-2.mp4 &
 REC=$!
 sleep 1
@@ -77,14 +81,14 @@ swipe; shot 22-exercise-muscles
 back; back
 tap "Progress"; sleep 2; shot 23-progress
 swipe; shot 24-progress-muscles
-tap "Details"; sleep 3; shot 24b-muscles-detail
+open_link /muscles; shot 24b-muscles-detail
 swipe; shot 24c-muscles-list
 back
 tap "Profile"; shot 26-profile
-tap "How to use"; sleep 2; shot 27-how-to-use
+open_link /help; shot 27-how-to-use
 back
 
-kill -INT $REC 2>/dev/null; sleep 3
+stoprec
 adb shell screenrecord --time-limit 178 --bit-rate 6000000 /sdcard/tour-3.mp4 &
 REC=$!
 sleep 1
@@ -108,7 +112,7 @@ else
 fi
 tap "Today"; sleep 2
 
-kill -INT $REC 2>/dev/null; sleep 4
+stoprec
 adb pull /sdcard/tour-1.mp4 "$OUT/tour-1.mp4" >/dev/null
 adb pull /sdcard/tour-2.mp4 "$OUT/tour-2.mp4" >/dev/null
 adb pull /sdcard/tour-3.mp4 "$OUT/tour-3.mp4" >/dev/null
