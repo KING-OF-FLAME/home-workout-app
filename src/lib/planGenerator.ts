@@ -91,6 +91,7 @@ const DAY_GROUPS: Record<Exclude<DayType, 'focus' | 'pelvic'>, MuscleGroup[]> = 
 
 /** Pelvic floor days: Kegels first, then moves that train the deep core and hips around it. */
 const PELVIC_MAIN = ['kegel-hold', 'kegel-flicks', 'bridge-squeeze'];
+const PELVIC_ONLY = new Set(['kegel-hold', 'kegel-flicks']);
 const PELVIC_SUPPORT = ['glute-bridge', 'dead-bug', 'bird-dog', 'fire-hydrants', 'squats', 'sumo-squats', 'reverse-crunches', 'single-leg-bridge'];
 const PELVIC_COOL = ['deep-squat-hold', 'butterfly-stretch', 'child-pose', 'cat-cow'];
 
@@ -180,7 +181,7 @@ function dayTypeFor(plan: MyPlan, session: number): DayType {
 }
 
 function poolFor(groups: MuscleGroup[], plan: MyPlan, level: Level): Exercise[] {
-  const list = EXERCISES.filter((e) => groups.includes(e.group) && allowed(e, plan, level));
+  const list = EXERCISES.filter((e) => groups.includes(e.group) && !PELVIC_ONLY.has(e.id) && allowed(e, plan, level));
   // Prefer moves close to the current level, so advanced users don't get only beginner moves.
   const close = list.filter((e) => e.level >= level - 1);
   return close.length >= 4 ? close : list;

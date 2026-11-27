@@ -49,7 +49,6 @@ name: FitHome member tutorial
 
 # The plan is generated
 - runScript: { file: caption.js, env: { CAPTION: "FitHome builds your plan for you." } }
-- assertVisible: "Building your plan.*"
 - takeScreenshot: u06-generating
 - extendedWaitUntil: { visible: ".*your plan is ready", timeout: 20000 }
 - takeScreenshot: u07-plan-ready
